@@ -1029,6 +1029,16 @@ img {
     pointer-events: auto;
 }
 
+.section05-topics-head,
+.section05-topics-chips,
+.section05-topics-note,
+.section05-topics-actions {
+    align-self: stretch;
+    width: auto;
+    margin-right: calc(var(--page-pad) - 2.2vw);
+    margin-left: calc(var(--page-pad) - 2.2vw);
+}
+
 .section05-topics-head {
     text-align: center;
 }
@@ -1052,9 +1062,8 @@ img {
 
 .section05-topics-chips {
     display: grid;
-    grid-template-columns: repeat(6, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: .9vh .55vw;
-    width: 100%;
 }
 
 .section05-topics-chips button {
@@ -1192,7 +1201,6 @@ img {
 }
 
 .section05-topics-note {
-    margin: 0;
     color: #b4bac4;
     font-size: 1vw;
     letter-spacing: -.03em;
@@ -1200,6 +1208,7 @@ img {
 
 .section05-topics-actions {
     display: flex;
+    justify-content: center;
     gap: .7vw;
 }
 

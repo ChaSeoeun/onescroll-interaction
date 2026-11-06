@@ -390,38 +390,43 @@ let section05Tl = null;
 let section05Step = 0;
 let switching = false;
 let section05Want = 0;
-let section05GalleryTimer = null;
 let section05GalleryArmed = false;
 let section05Progress = 0;
 let section05TopicExit = false;
 let section05HoldThumbs = null;
 
-function clearSection05GalleryTimer() {
-    if (!section05GalleryTimer) return;
-    clearTimeout(section05GalleryTimer);
-    section05GalleryTimer = null;
-}
-
-function armSection05Gallery() {
-    section05GalleryArmed = true;
-    if (section05Want < 1) section05Want = 1;
-    section05Follow();
-}
-
-function scheduleSection05Gallery() {
-    if (section05GalleryTimer || section05GalleryArmed) return;
-    section05GalleryTimer = setTimeout(() => {
-        section05GalleryTimer = null;
-        armSection05Gallery();
-    }, 500);
-}
+// 제목(5,800편)이 보인 상태에서 휠 한 번 정도 내리면 썸네일이 나온다
+const SECTION05_GALLERY_SCROLL = 40;
 
 function disarmSection05Gallery() {
-    clearSection05GalleryTimer();
     section05GalleryArmed = false;
     if (!section05Want && !section05Step) return;
     section05Want = 0;
     section05Follow();
+}
+
+function section05ScrolledIn(self) {
+    return self.progress * (self.end - self.start);
+}
+
+// 빠른 스크롤은 등장 트윈을 기다리지 않고 썸네일을 제자리에 둔다
+function settleSection05Gallery() {
+    if (section05Tl) section05Tl.kill();
+    section05Step = 1;
+    switching = false;
+    gsap.set(section05Copy, { scale: 0.78 });
+    section05Thumbs.forEach((thumb) => {
+        gsap.set(thumb, {
+            xPercent: -50,
+            yPercent: -50,
+            x: Number(thumb.dataset.x),
+            y: Number(thumb.dataset.y),
+            skewY: Number(thumb.dataset.skew),
+            rotation: 0,
+            scale: 1,
+            opacity: 1
+        });
+    });
 }
 
 function section05Follow() {
@@ -664,7 +669,8 @@ function paintSection05Panels(chartT, levelsT, topicsT = 0, thumbs = true) {
     section05Topics.classList.toggle("is-ready", ready);
     section05Topics.setAttribute("aria-hidden", ready ? "false" : "true");
     const slots = topicsT > 0.001 ? section05EnsureCast() : [];
-    if (topicsT <= 0.001) section05ReleaseCast();
+    // 전환 중(switching)에는 슬롯으로 날아가는 카드를 놓치면 원래 자리로 돌아오지 못하므로 해제하지 않는다
+    if (topicsT <= 0.001 && !switching) section05ReleaseCast();
     if (!thumbs) return;
     section05Thumbs.forEach(thumb => {
         if (section05HoldThumbs && section05HoldThumbs.has(thumb)) return;
@@ -720,7 +726,14 @@ function paintSection05Panels(chartT, levelsT, topicsT = 0, thumbs = true) {
             chartPass.has(thumb) ? 1 : 0,
             clearT
         );
-        gsap.set(thumb, { opacity: 1 - amount, scale: 1 - amount * 0.14, rotation: 0 });
+        // 가려지는 카드도 제자리로 되돌려, 이전 단계에서 남은 위치 오차가 그대로 보이지 않게 한다
+        gsap.set(thumb, {
+            x: Number(thumb.dataset.x),
+            y: Number(thumb.dataset.y),
+            opacity: 1 - amount,
+            scale: 1 - amount * 0.14,
+            rotation: 0
+        });
     });
     setSection05Chart(1);
 }
@@ -1168,7 +1181,12 @@ function section05EnsureCast() {
 function section05ReleaseCast() {
     if (!section05Cast.length) return;
     section05Cast.forEach(thumb => {
-        thumb.style.zIndex = "";
+        gsap.set(thumb, {
+            clearProps: "zIndex",
+            width: Number(thumb.dataset.w),
+            height: Number(thumb.dataset.h),
+            borderRadius: 8
+        });
         if (thumb.dataset.src) thumb.src = thumb.dataset.src;
     });
     section05Cast = [];
@@ -1334,15 +1352,14 @@ resetSection05();
 const section05Reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 function syncSection05Scroll(self) {
     section05Progress = self.progress;
-    const scrolled = Math.min(4, Math.floor(self.progress * 5));
-    if (scrolled >= 1) {
-        clearSection05GalleryTimer();
+    if (!section05GalleryArmed && section05ScrolledIn(self) >= SECTION05_GALLERY_SCROLL) {
         section05GalleryArmed = true;
-    } else if (self.isActive) {
-        scheduleSection05Gallery();
     }
-    if (!section05GalleryArmed) section05Want = scrolled;
-    else section05Want = 1;
+    const galleryIntro = section05Step === 0 || (switching && section05Step === 1 && !section05TopicExit);
+    if (section05GalleryArmed && section05ChartT(self.progress) > 0 && galleryIntro) {
+        settleSection05Gallery();
+    }
+    section05Want = section05GalleryArmed ? 1 : 0;
     section05Follow();
     if (section05TopicExit || (section05GalleryArmed && (section05Step === 1 || switching))) {
         paintSection05Panels(section05ChartT(self.progress), section05LevelsT(self.progress), section05TopicsT(self.progress), !switching || section05TopicExit);
@@ -1354,7 +1371,6 @@ if (!section05Reduce) {
         trigger: section05Scroll,
         start: "top top",
         end: "bottom bottom",
-        onEnter: scheduleSection05Gallery,
         onLeaveBack: disarmSection05Gallery,
         onUpdate: syncSection05Scroll
     });
