@@ -354,7 +354,9 @@ window.addEventListener("resize", () => {
 });
 
 const section05 = document.querySelector(".section05");
+const section05Stage = document.querySelector(".section05-stage");
 const section05Scroll = document.querySelector("#section05Scroll");
+const SECTION05_IRIS_END = 0.62;
 
 if (section05 && section05Scroll) {
 const section05Gallery = section05.querySelector(".section05-gallery");
@@ -1350,20 +1352,48 @@ function hideSection05Topics() {
 resetSection05();
 
 const section05Reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+function section05Split(self) {
+    const total = self.end - self.start;
+    const extra = window.innerHeight * 1.2;
+    const main = Math.max(window.innerHeight, total - extra);
+    const y = self.progress * total;
+    return {
+        main: clamp(y / main, 0, 1),
+        exit: clamp((y - main) / extra, 0, 1)
+    };
+}
+
+function paintSection05Exit(exit) {
+    if (!section05Stage) return;
+    const iris = clamp(exit / SECTION05_IRIS_END, 0, 1);
+    if (exit <= 0) {
+        gsap.set(section05Stage, { clearProps: "clipPath" });
+        section05Stage.style.pointerEvents = "";
+        return;
+    }
+    const radius = lerp(Math.hypot(window.innerWidth, window.innerHeight) * 0.5, 5, iris);
+    gsap.set(section05Stage, { clipPath: `circle(${radius}px at 50% 50%)` });
+    section05Stage.style.pointerEvents = "none";
+}
+
 function syncSection05Scroll(self) {
-    section05Progress = self.progress;
+    const split = section05Split(self);
+    section05Progress = split.main;
     if (!section05GalleryArmed && section05ScrolledIn(self) >= SECTION05_GALLERY_SCROLL) {
         section05GalleryArmed = true;
     }
     const galleryIntro = section05Step === 0 || (switching && section05Step === 1 && !section05TopicExit);
-    if (section05GalleryArmed && section05ChartT(self.progress) > 0 && galleryIntro) {
+    if (section05GalleryArmed && section05ChartT(section05Progress) > 0 && galleryIntro) {
         settleSection05Gallery();
     }
     section05Want = section05GalleryArmed ? 1 : 0;
     section05Follow();
     if (section05TopicExit || (section05GalleryArmed && (section05Step === 1 || switching))) {
-        paintSection05Panels(section05ChartT(self.progress), section05LevelsT(self.progress), section05TopicsT(self.progress), !switching || section05TopicExit);
+        paintSection05Panels(section05ChartT(section05Progress), section05LevelsT(section05Progress), section05TopicsT(section05Progress), !switching || section05TopicExit);
     }
+    paintSection05Exit(split.exit);
+    placeScrollDotFromExit(split.exit);
+    paintScrollConnector();
 }
 
 if (!section05Reduce) {
@@ -1378,3 +1408,131 @@ if (!section05Reduce) {
 }
 
 }
+
+let scrollDrawActive = false;
+const scrollDot = document.querySelector(".scroll-draw__dot");
+const scrollDrawPath = document.querySelector(".scroll-draw__path");
+const scrollStem = document.querySelector(".scroll-draw__stem");
+const scrollDrawSvg = document.querySelector(".scroll-draw");
+
+function scrollDotPoint(progress) {
+    if (!scrollDrawPath) return null;
+    const point = scrollDrawPath.getPointAtLength(scrollDrawPath.getTotalLength() * progress);
+    const local = scrollDrawPath.ownerSVGElement.createSVGPoint();
+    local.x = point.x;
+    local.y = point.y;
+    const ctm = scrollDrawPath.getScreenCTM();
+    if (!ctm) return null;
+    return local.matrixTransform(ctm);
+}
+
+function placeScrollDot(progress) {
+    const screen = scrollDotPoint(progress);
+    if (!screen || !scrollDot) return;
+    gsap.set(scrollDot, { x: screen.x, y: screen.y, opacity: 1 });
+}
+
+function connectorGrow() {
+    if (!section05Scroll || !scrollDrawSvg) return 0;
+    const scroll = window.scrollY;
+    const sectionTop = section05Scroll.getBoundingClientRect().top + scroll;
+    const total = section05Scroll.offsetHeight - window.innerHeight;
+    const extra = window.innerHeight * 1.2;
+    const main = Math.max(window.innerHeight, total - extra);
+    const growStart = sectionTop + main + extra * SECTION05_IRIS_END;
+    const growEnd = scrollDrawSvg.getBoundingClientRect().top + scroll - window.innerHeight * 0.8;
+    if (growEnd <= growStart) return scroll >= growEnd ? 1 : 0;
+    return clamp((scroll - growStart) / (growEnd - growStart), 0, 1);
+}
+
+function alignScrollDraw() {
+    if (!scrollDrawSvg) return;
+    const width = scrollDrawSvg.getBoundingClientRect().width;
+    if (!width) return;
+    const shift = width / 2 - (493 / 941) * width;
+    scrollDrawSvg.style.transform = `translateX(${shift}px)`;
+}
+
+function paintScrollConnector() {
+    if (!scrollStem || !scrollDrawPath || !section05 || reduceMotion) return;
+    alignScrollDraw();
+    const pathStart = scrollDotPoint(0);
+    if (!pathStart) return;
+    const grow = connectorGrow();
+    const originY = section05.getBoundingClientRect().top + section05.clientHeight / 2;
+    const tipY = lerp(originY, pathStart.y, grow);
+    const top = Math.min(originY, tipY);
+    const height = Math.abs(tipY - originY);
+    const width = scrollDrawSvg.getBoundingClientRect().width;
+    gsap.set(scrollStem, {
+        x: pathStart.x,
+        y: top,
+        xPercent: -50,
+        height: Math.max(0, height),
+        width: width ? 2.4 * width / 1180 : 2,
+        opacity: grow > 0.001 && height > 1 ? 1 : 0
+    });
+    if (!scrollDot || scrollDrawActive || grow <= 0) return;
+    gsap.set(scrollDot, { x: pathStart.x, y: tipY, opacity: 1 });
+}
+
+function placeScrollDotFromExit(exit) {
+    if (!scrollDot || scrollDrawActive || connectorGrow() > 0) return;
+    const iris = clamp(exit / SECTION05_IRIS_END, 0, 1);
+    if (iris < 0.92) {
+        gsap.set(scrollDot, { opacity: 0 });
+        return;
+    }
+    const pathStart = scrollDotPoint(0);
+    gsap.set(scrollDot, {
+        x: pathStart ? pathStart.x : window.innerWidth / 2,
+        y: window.innerHeight / 2,
+        opacity: 1
+    });
+}
+
+function initScrollDraw() {
+    if (!scrollDrawSvg || !scrollDrawPath) return;
+    const paintDraw = (progress) => {
+        scrollDrawPath.style.strokeDashoffset = String(1 - progress);
+    };
+
+    if (reduceMotion) {
+        paintDraw(1);
+        return;
+    }
+
+    alignScrollDraw();
+    ScrollTrigger.addEventListener("refreshInit", alignScrollDraw);
+
+    if (section05Scroll) {
+        ScrollTrigger.create({
+            trigger: section05Scroll,
+            start: "top top",
+            endTrigger: ".scroll-draw",
+            end: "bottom top",
+            onUpdate: paintScrollConnector
+        });
+    }
+
+    ScrollTrigger.create({
+        trigger: ".scroll-draw",
+        start: "top 80%",
+        end: "bottom 30%",
+        scrub: 1,
+        onToggle(self) {
+            scrollDrawActive = self.isActive;
+            paintDraw(self.progress);
+            if (self.isActive) placeScrollDot(self.progress);
+            else if (self.progress >= 1 && scrollDot) gsap.set(scrollDot, { opacity: 0 });
+            paintScrollConnector();
+        },
+        onUpdate(self) {
+            paintDraw(self.progress);
+            placeScrollDot(self.progress);
+            paintScrollConnector();
+        }
+    });
+}
+
+initScrollDraw();

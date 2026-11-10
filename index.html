@@ -277,6 +277,7 @@
 
     <div class="section05-scroll" id="section05Scroll">
         <section class="section05" aria-label="리틀팍스 동화">
+            <div class="section05-stage">
             <div class="section05-gallery" aria-hidden="true"></div>
             <div class="section-title section-count">
                 <h3>리틀팍스 동화</h3>
@@ -411,9 +412,42 @@
                     <button type="button" class="is-line">무료 체험</button>
                 </div>
             </div>
+            </div>
         </section>
     </div>
     </div>
+
+    <section class="scroll-draw-section" aria-label="선으로 이어지는 다음 장면">
+        <svg
+            class="scroll-draw"
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 941 1672"
+            role="img"
+            aria-label="세 음표 원터치 드로잉"
+        >
+            <defs>
+                <mask id="draw-mask" maskUnits="userSpaceOnUse" x="0" y="0" width="941" height="1672">
+                    <rect width="941" height="1672" fill="black"/>
+                    <path
+                        id="draw-path"
+                        class="scroll-draw__path"
+                        d="M493 145 C458 135 420 126 394 145 C373 160 369 181 370 210 C371 253 368 292 344 322 C321 350 291 355 267 350 C239 346 214 329 219 316 C224 302 245 302 258 311 C272 321 270 344 263 359 C247 392 214 413 178 430 C128 454 93 477 76 510 C62 538 69 560 86 570 C77 562 76 552 82 544 C88 535 101 531 113 533 C128 534 137 543 133 552 C129 563 113 568 98 565 C86 562 82 553 88 546 C95 537 110 538 121 543 C132 548 133 555 124 561 C112 569 94 570 86 570 C86 607 77 643 73 662 C70 682 81 686 97 676 C124 660 147 641 155 620 C162 603 157 589 149 591 C138 594 139 615 149 633 C163 657 190 670 222 674 C270 680 307 660 345 631 C385 600 416 575 454 572 C493 570 524 589 540 619 C553 644 552 665 537 681 C524 696 508 693 502 684 C497 675 509 664 528 658 C550 651 574 659 594 676 C622 701 641 742 646 791 C650 843 649 895 674 936 C691 964 715 978 738 981 C727 978 718 968 721 958 C724 947 738 942 748 948 C757 954 755 966 745 972 C735 978 724 974 721 966 C719 956 731 948 741 949 C752 950 758 960 752 970 C748 977 742 981 738 981 C755 982 765 970 771 950 C779 920 785 891 810 886 C828 882 848 884 864 886 C861 914 852 944 839 968 C831 982 820 991 808 992 C819 991 832 985 833 975 C834 964 824 956 813 958 C802 960 798 970 805 977 C812 985 825 984 832 976 C839 966 829 954 817 953 C805 952 797 963 801 973 C803 981 809 987 808 992 C806 1056 795 1122 776 1183 C750 1267 707 1335 646 1385 C595 1427 534 1458 466 1460 C389 1463 320 1434 255 1432 C192 1430 133 1455 95 1496 C69 1525 63 1550 82 1577 C103 1607 143 1623 178 1620 C210 1617 238 1599 255 1572 C271 1545 263 1509 246 1496 C230 1483 221 1490 215 1515 C208 1547 202 1582 187 1613 C180 1625 164 1628 157 1634 C151 1640 162 1647 176 1645 C190 1643 202 1634 199 1624 C196 1614 182 1611 172 1619 C164 1625 160 1634 166 1640 C173 1646 186 1642 192 1634 C197 1628 191 1618 187 1613"
+                        fill="none"
+                        stroke="white"
+                        stroke-width="70"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        pathLength="1"
+                        stroke-dasharray="1"
+                        stroke-dashoffset="1"
+                    />
+                </mask>
+            </defs>
+            <image href="images/song-scroll.png" width="941" height="1672" mask="url(#draw-mask)"/>
+        </svg>
+        <span class="scroll-draw__stem" aria-hidden="true"></span>
+        <span class="scroll-draw__dot" aria-hidden="true"></span>
+    </section>
 
     <script src="js/vendor/gsap.min.js"></script>
     <script src="js/vendor/ScrollTrigger.min.js"></script>
