@@ -1368,11 +1368,16 @@ function paintSection05Exit(exit) {
     const iris = clamp(exit / SECTION05_IRIS_END, 0, 1);
     if (exit <= 0) {
         gsap.set(section05Stage, { clearProps: "clipPath" });
+        gsap.set(section05, { backgroundColor: "#fff" });
         section05Stage.style.pointerEvents = "";
         return;
     }
     const radius = lerp(Math.hypot(window.innerWidth, window.innerHeight) * 0.5, 5, iris);
+    const ink = clamp(iris / 0.18, 0, 1);
     gsap.set(section05Stage, { clipPath: `circle(${radius}px at 50% 50%)` });
+    gsap.set(section05, {
+        backgroundColor: gsap.utils.interpolate("#ffffff", "#111111", ink)
+    });
     section05Stage.style.pointerEvents = "none";
 }
 
@@ -1410,10 +1415,15 @@ if (!section05Reduce) {
 }
 
 let scrollDrawActive = false;
+let scrollDrawProgress = 0;
 const scrollDot = document.querySelector(".scroll-draw__dot");
 const scrollDrawPath = document.querySelector(".scroll-draw__path");
 const scrollStem = document.querySelector(".scroll-draw__stem");
 const scrollDrawSvg = document.querySelector(".scroll-draw");
+const scrollExitPath = document.querySelector(".scroll-exit__path");
+const scrollExitStem = document.querySelector(".scroll-exit__stem");
+const scrollOpen = document.querySelector(".scroll-open");
+const scrollBloom = document.querySelector(".scroll-open__bloom");
 
 function scrollDotPoint(progress) {
     if (!scrollDrawPath) return null;
@@ -1429,7 +1439,7 @@ function scrollDotPoint(progress) {
 function placeScrollDot(progress) {
     const screen = scrollDotPoint(progress);
     if (!screen || !scrollDot) return;
-    gsap.set(scrollDot, { x: screen.x, y: screen.y, opacity: 1 });
+    gsap.set(scrollDot, { x: screen.x, y: screen.y, opacity: 1, scale: 1 });
 }
 
 function connectorGrow() {
@@ -1472,8 +1482,8 @@ function paintScrollConnector() {
         width: width ? 2.4 * width / 1180 : 2,
         opacity: grow > 0.001 && height > 1 ? 1 : 0
     });
-    if (!scrollDot || scrollDrawActive || grow <= 0) return;
-    gsap.set(scrollDot, { x: pathStart.x, y: tipY, opacity: 1 });
+    if (!scrollDot || scrollDrawActive || grow <= 0 || scrollDrawProgress >= 1) return;
+    gsap.set(scrollDot, { x: pathStart.x, y: tipY, opacity: 1, scale: 1 });
 }
 
 function placeScrollDotFromExit(exit) {
@@ -1487,13 +1497,117 @@ function placeScrollDotFromExit(exit) {
     gsap.set(scrollDot, {
         x: pathStart ? pathStart.x : window.innerWidth / 2,
         y: window.innerHeight / 2,
-        opacity: 1
+        opacity: 1,
+        scale: 1
     });
+}
+
+function exitStrokeWidth() {
+    const width = scrollDrawSvg ? scrollDrawSvg.getBoundingClientRect().width : 0;
+    return width ? 3.1 * width / 941 : 2;
+}
+
+function drawEndScroll() {
+    const rect = scrollDrawSvg.getBoundingClientRect();
+    return rect.top + window.scrollY + rect.height - window.innerHeight * 0.3;
+}
+
+function hideScrollExit() {
+    if (scrollExitPath) scrollExitPath.style.opacity = "0";
+    if (scrollExitStem) gsap.set(scrollExitStem, { opacity: 0, height: 0 });
+    if (scrollBloom) gsap.set(scrollBloom, { opacity: 0, scale: 1 });
+}
+
+function paintScrollExit() {
+    if (!scrollExitPath || !scrollDrawPath || !scrollOpen || reduceMotion) return;
+    const openRect = scrollOpen.getBoundingClientRect();
+    if (scrollDrawProgress < 0.995 || openRect.bottom < 0) {
+        hideScrollExit();
+        return;
+    }
+
+    const end = scrollDotPoint(1);
+    const prev = scrollDotPoint(0.992);
+    if (!end) return;
+
+    const scroll = window.scrollY;
+    const pageEndY = end.y + scroll;
+    const centerX = window.innerWidth / 2;
+    const start = drawEndScroll();
+    const openTop = openRect.top + scroll;
+    const available = Math.max(window.innerHeight * 0.8, openTop - start);
+    const curveScroll = Math.max(window.innerHeight * 0.34, available * 0.3);
+    const endY0 = pageEndY - start;
+    const drop = Math.max(window.innerHeight * 0.28, window.innerHeight * 0.36 - endY0 + curveScroll);
+    const pageArriveY = pageEndY + drop;
+    const handle = Math.min(Math.max(drop, 80) * 0.46, window.innerHeight * 0.42);
+    const leave = Math.min(110, handle);
+    let leaveX = 0;
+    let leaveY = 1;
+    if (prev) {
+        const dx = end.x - prev.x;
+        const dy = end.y - prev.y;
+        const mag = Math.hypot(dx, dy) || 1;
+        leaveX = dx / mag;
+        leaveY = dy / mag;
+    }
+
+    const yOf = pageY => pageY - scroll;
+    scrollExitPath.setAttribute("d", `M ${end.x} ${yOf(pageEndY)} C ${end.x + leaveX * leave} ${yOf(pageEndY + leaveY * leave)} ${centerX} ${yOf(pageArriveY - handle)} ${centerX} ${yOf(pageArriveY)}`);
+    const length = scrollExitPath.getTotalLength() || 1;
+    const stroke = exitStrokeWidth();
+    const curveT = clamp((scroll - start) / curveScroll, 0, 1);
+    scrollExitPath.style.strokeWidth = stroke + "px";
+    scrollExitPath.style.strokeDasharray = String(length);
+    scrollExitPath.style.strokeDashoffset = String(length * (1 - curveT));
+    scrollExitPath.style.opacity = curveT > 0.004 ? "1" : "0";
+
+    const straightT = clamp((scroll - (start + curveScroll)) / Math.max(1, available - curveScroll), 0, 1);
+    const arriveY = yOf(pageArriveY);
+    const tipY = lerp(pageArriveY, openTop + window.innerHeight / 2, straightT) - scroll;
+    const stemHeight = Math.max(0, tipY - arriveY);
+    const stemOverlap = stroke * 0.45;
+    if (scrollExitStem) {
+        scrollExitStem.style.width = stroke + "px";
+        gsap.set(scrollExitStem, {
+            x: centerX,
+            y: arriveY - (curveT >= 1 ? stemOverlap : 0),
+            xPercent: -50,
+            height: stemHeight + (curveT >= 1 ? stemOverlap : 0),
+            opacity: curveT >= 1 && stemHeight > 1 ? 1 : 0
+        });
+    }
+
+    const travel = Math.max(1, scrollOpen.offsetHeight - window.innerHeight);
+    const bloomT = clamp((scroll - openTop) / travel, 0, 1);
+    const showBloom = scroll >= openTop && openRect.bottom > 0;
+    if (scrollBloom) {
+        gsap.set(scrollBloom, {
+            opacity: showBloom ? 1 : 0,
+            scale: lerp(1, Math.hypot(window.innerWidth, window.innerHeight) / 12 * 1.08, bloomT)
+        });
+    }
+
+    if (scrollDot && !scrollDrawActive) {
+        if (showBloom) gsap.set(scrollDot, { opacity: 0, scale: 1 });
+        else if (curveT < 1) {
+            const point = scrollExitPath.getPointAtLength(length * curveT);
+            gsap.set(scrollDot, { x: point.x, y: point.y, scale: 1, opacity: curveT > 0.02 ? 1 : 0 });
+        } else {
+            gsap.set(scrollDot, { x: centerX, y: tipY, scale: 1, opacity: 1 });
+        }
+    }
+
+    if (bloomT > 0.96) {
+        scrollExitPath.style.opacity = "0";
+        if (scrollExitStem) gsap.set(scrollExitStem, { opacity: 0 });
+    }
 }
 
 function initScrollDraw() {
     if (!scrollDrawSvg || !scrollDrawPath) return;
     const paintDraw = (progress) => {
+        scrollDrawProgress = progress;
         scrollDrawPath.style.strokeDashoffset = String(1 - progress);
     };
 
@@ -1511,7 +1625,10 @@ function initScrollDraw() {
             start: "top top",
             endTrigger: ".scroll-draw",
             end: "bottom top",
-            onUpdate: paintScrollConnector
+            onUpdate() {
+                paintScrollConnector();
+                paintScrollExit();
+            }
         });
     }
 
@@ -1524,15 +1641,26 @@ function initScrollDraw() {
             scrollDrawActive = self.isActive;
             paintDraw(self.progress);
             if (self.isActive) placeScrollDot(self.progress);
-            else if (self.progress >= 1 && scrollDot) gsap.set(scrollDot, { opacity: 0 });
             paintScrollConnector();
+            paintScrollExit();
         },
         onUpdate(self) {
             paintDraw(self.progress);
-            placeScrollDot(self.progress);
+            if (self.progress < 1) placeScrollDot(self.progress);
             paintScrollConnector();
+            paintScrollExit();
         }
     });
+
+    if (scrollOpen) {
+        ScrollTrigger.create({
+            trigger: ".scroll-draw",
+            start: "bottom 30%",
+            endTrigger: ".scroll-open",
+            end: "bottom top",
+            onUpdate: paintScrollExit
+        });
+    }
 }
 
 initScrollDraw();
