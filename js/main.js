@@ -1773,6 +1773,7 @@ const songCatalog = [
 let songIndex = 0;
 let songOut = false;
 let songTopicButtons = [];
+let songIntroHold = null;
 
 function songSlideX() {
     return songVinyl ? songVinyl.offsetWidth * 0.72 : 0;
@@ -1820,13 +1821,19 @@ function paintSong() {
     const openTop = open ? open.top + window.scrollY : 0;
     const travel = scrollOpen ? Math.max(1, scrollOpen.offsetHeight - window.innerHeight) : 1;
     const bloomT = open ? clamp((window.scrollY - openTop) / travel, 0, 1) : 0;
-    const stageTop = songScroll.getBoundingClientRect().top;
     const dotScale = scrollDot ? Number(gsap.getProperty(scrollDot, "scale")) || 1 : 1;
     const dotX = scrollDot ? Number(gsap.getProperty(scrollDot, "x")) : 0;
     const dotY = scrollDot ? Number(gsap.getProperty(scrollDot, "y")) : 0;
     const dotAtCenter = Math.abs(dotX - window.innerWidth / 2) < 4 && Math.abs(dotY - window.innerHeight / 2) < 4;
     const covering = open && open.bottom > 0 && bloomT > 0 && dotAtCenter && Number(gsap.getProperty(scrollDot, "opacity")) > 0.5;
     if (covering) {
+        if (!songIntroHold && songStage) {
+            songIntroHold = document.createElement("div");
+            songIntroHold.className = "song-intro-hold";
+            songIntroHold.setAttribute("aria-hidden", "true");
+            songIntroHold.style.height = `${songIntro.getBoundingClientRect().height}px`;
+            songStage.insertBefore(songIntroHold, songIntro);
+        }
         if (songIntro.parentElement !== document.body) document.body.appendChild(songIntro);
         songIntro.classList.add("is-cover");
         gsap.set(songIntro, {
@@ -1836,24 +1843,20 @@ function paintSong() {
             opacity: 1,
             clipPath: `circle(${6 * dotScale}px at 50% 50%)`
         });
-        gsap.set(songPlayer, { opacity: 0, y: 48, pointerEvents: "none" });
         return;
     }
-    if (songStage && songIntro.parentElement !== songStage) songStage.insertBefore(songIntro, songPlayer);
+    if (songStage && songIntroHold) {
+        songStage.insertBefore(songIntro, songIntroHold);
+        songIntroHold.remove();
+        songIntroHold = null;
+    } else if (songStage && songIntro.parentElement !== songStage) {
+        songStage.insertBefore(songIntro, songPlayer);
+    }
+    if (scrollDot && open && open.bottom <= 0) hideScrollExit();
     if (songIntro.classList.contains("is-cover")) {
         songIntro.classList.remove("is-cover");
-        gsap.set(songIntro, { clearProps: "transform,clipPath" });
+        gsap.set(songIntro, { clearProps: "transform,clipPath,opacity" });
     }
-    const range = Math.max(1, songScroll.offsetHeight - window.innerHeight);
-    const playerT = clamp(-stageTop / range, 0, 1);
-    const introT = clamp(1 - playerT / 0.5, 0, 1);
-    const showPlayer = clamp((playerT - 0.34) / 0.42, 0, 1);
-    gsap.set(songIntro, { opacity: introT, y: (1 - introT) * -40 });
-    gsap.set(songPlayer, {
-        opacity: showPlayer,
-        y: (1 - showPlayer) * 56,
-        pointerEvents: showPlayer > 0.85 ? "auto" : "none"
-    });
 }
 
 function initSong() {
