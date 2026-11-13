@@ -353,71 +353,84 @@ window.addEventListener("resize", () => {
     }, 250);
 });
 
-const section05 = document.querySelector(".section05");
-const section05Stage = document.querySelector(".section05-stage");
-const section05Scroll = document.querySelector("#section05Scroll");
-const SECTION05_IRIS_END = 0.62;
+const stories = document.querySelector(".stories");
+const storiesStage = document.querySelector(".stories-stage");
+const storiesScroll = document.querySelector("#storiesScroll");
+const STORIES_IRIS_END = 0.62;
+let scrollDrawActive = false;
+let scrollDrawProgress = 0;
+let scrollDrawHold = 0;
+let scrollDrawMeasuring = false;
+const scrollDot = document.querySelector(".scroll-draw__dot");
+const scrollDrawPath = document.querySelector("#draw-path");
+const scrollLpPath = document.querySelector("#lp-player-path");
+const scrollStem = document.querySelector(".scroll-draw__stem");
+const scrollDrawSvg = document.querySelector(".scroll-draw");
+const scrollExitPath = document.querySelector(".scroll-exit__path");
+const scrollExitStem = document.querySelector(".scroll-exit__stem");
+const scrollOpen = document.querySelector(".scroll-open");
+const scrollBloom = document.querySelector(".scroll-open__bloom");
 
-if (section05 && section05Scroll) {
-const section05Gallery = section05.querySelector(".section05-gallery");
-const section05Copy = section05.querySelector(".section-count");
-const section05Hint = section05.querySelector(".section-count > span");
-const section05Chart = section05.querySelector(".section05-chart");
-const section05Levels = section05.querySelector(".section05-levels");
-const section05Segs = [...section05.querySelectorAll(".section05-seg")];
-const section05Topics = section05.querySelector(".section05-topics");
-const section05SlotRoot = section05Topics.querySelector(".section05-topics-slots");
-const SECTION05_SLOT_COUNT = 5;
-section05SlotRoot.replaceChildren(...Array.from({ length: SECTION05_SLOT_COUNT }, () => {
+if (stories && storiesScroll) {
+const storiesGallery = stories.querySelector(".stories-gallery");
+const storiesCopy = stories.querySelector(".stories-count");
+const storiesHint = stories.querySelector(".stories-count > span");
+const storiesChart = stories.querySelector(".stories-chart");
+const storiesLevels = stories.querySelector(".stories-levels");
+const storiesSegs = [...stories.querySelectorAll(".stories-seg")];
+const storiesTopics = stories.querySelector(".stories-topics");
+const storiesSlotRoot = storiesTopics.querySelector(".stories-topics-slots");
+const STORIES_SLOT_COUNT = 5;
+storiesSlotRoot.replaceChildren(...Array.from({ length: STORIES_SLOT_COUNT }, () => {
     const slot = document.createElement("div");
-    slot.className = "section05-topics-slot";
+    slot.className = "stories-topics-slot";
     const frame = document.createElement("div");
-    frame.className = "section05-slot-frame";
+    frame.className = "stories-slot-frame";
     const label = document.createElement("p");
-    label.className = "js-topic-in";
+    label.className = "stories-in";
     slot.append(frame, label);
     return slot;
 }));
-let section05TopicButtons = [];
-const section05TopicName = section05Topics.querySelector(".section05-topics-copy h3");
-const section05TopicCount = section05Topics.querySelector(".section05-topics-count b");
-const section05TopicDesc = section05Topics.querySelector(".section05-topics-desc");
-const section05TopicLabels = [...section05Topics.querySelectorAll(".section05-topics-slot p")];
-const section05TopicReveals = [...section05Topics.querySelectorAll(".js-topic-in")];
-let section05Thumbs = [];
-let section05Cast = [];
-let section05TopicIndex = 0;
-let section05TopicOffset = 0;
-let section05Tl = null;
-let section05Step = 0;
+let storiesTopicButtons = [];
+const storiesTopicName = storiesTopics.querySelector(".stories-topics-copy h3");
+const storiesTopicCount = storiesTopics.querySelector(".stories-topics-count b");
+const storiesTopicDesc = storiesTopics.querySelector(".stories-topics-desc");
+const storiesTopicLabels = [...storiesTopics.querySelectorAll(".stories-topics-slot p")];
+const storiesTopicReveals = [...storiesTopics.querySelectorAll(".stories-in")];
+let storiesThumbs = [];
+let storiesCast = [];
+let storiesTopicIndex = 0;
+let storiesTopicOffset = 0;
+let storiesTl = null;
+let storiesStep = 0;
 let switching = false;
-let section05Want = 0;
-let section05GalleryArmed = false;
-let section05Progress = 0;
-let section05TopicExit = false;
-let section05HoldThumbs = null;
+let storiesWant = 0;
+let storiesGalleryArmed = false;
+let storiesProgress = 0;
+let storiesTopicExit = false;
+let storiesHoldThumbs = null;
 
 // 제목(5,800편)이 보인 상태에서 휠 한 번 정도 내리면 썸네일이 나온다
-const SECTION05_GALLERY_SCROLL = 40;
+const STORIES_GALLERY_SCROLL = 40;
 
-function disarmSection05Gallery() {
-    section05GalleryArmed = false;
-    if (!section05Want && !section05Step) return;
-    section05Want = 0;
-    section05Follow();
+function disarmStoriesGallery() {
+    storiesGalleryArmed = false;
+    if (!storiesWant && !storiesStep) return;
+    storiesWant = 0;
+    storiesFollow();
 }
 
-function section05ScrolledIn(self) {
+function storiesScrolledIn(self) {
     return self.progress * (self.end - self.start);
 }
 
 // 빠른 스크롤은 등장 트윈을 기다리지 않고 썸네일을 제자리에 둔다
-function settleSection05Gallery() {
-    if (section05Tl) section05Tl.kill();
-    section05Step = 1;
+function settleStoriesGallery() {
+    if (storiesTl) storiesTl.kill();
+    storiesStep = 1;
     switching = false;
-    gsap.set(section05Copy, { scale: 0.78 });
-    section05Thumbs.forEach((thumb) => {
+    gsap.set(storiesCopy, { scale: 0.78 });
+    storiesThumbs.forEach((thumb) => {
         gsap.set(thumb, {
             xPercent: -50,
             yPercent: -50,
@@ -431,29 +444,29 @@ function settleSection05Gallery() {
     });
 }
 
-function section05Follow() {
-    if (switching || section05Want === section05Step) return;
-    if (section05Want > section05Step) {
-        if (section05Step === 0) showSection05Gallery();
-        else if (section05Step === 1 && section05Want >= 4) {
-            paintSection05Panels(1, 1);
-            section05Step = 3;
-            showSection05Topics();
+function storiesFollow() {
+    if (switching || storiesWant === storiesStep) return;
+    if (storiesWant > storiesStep) {
+        if (storiesStep === 0) showStoriesGallery();
+        else if (storiesStep === 1 && storiesWant >= 4) {
+            paintStoriesPanels(1, 1);
+            storiesStep = 3;
+            showStoriesTopics();
         }
-        else if (section05Step === 3) showSection05Topics();
-    } else if (section05Step === 4) hideSection05Topics();
-    else if (section05Step === 3) {
-        section05Step = 1;
-        paintSection05Panels(section05ChartT(section05Progress), section05LevelsT(section05Progress));
-        section05Follow();
+        else if (storiesStep === 3) showStoriesTopics();
+    } else if (storiesStep === 4) hideStoriesTopics();
+    else if (storiesStep === 3) {
+        storiesStep = 1;
+        paintStoriesPanels(storiesChartT(storiesProgress), storiesLevelsT(storiesProgress));
+        storiesFollow();
     }
-    else if (section05Step === 1) hideSection05Gallery();
+    else if (storiesStep === 1) hideStoriesGallery();
 }
 
 // ===== 섹션 5 =====
 // featured.jpg 원본 184x123 비율 그대로 둬야 잘리지 않는다
-const SECTION05_RATIO = 184 / 123;
-const section05Ids = [
+const STORIES_RATIO = 184 / 123;
+const storiesIds = [
     ...range(11, 61), ...range(63, 87), ...range(97, 153), ...range(170, 183)
 ];
 
@@ -462,7 +475,7 @@ function range(from, to) {
 }
 
 // 바깥 열일수록 크고 더 기울여 곡면처럼 보이게 한다. 같은 열은 같은 기울기라 서로 겹치지 않는다
-function layoutSection05Screen() {
+function layoutStoriesScreen() {
     const vw = window.innerWidth;
     const vh = window.innerHeight;
     const gap = Math.max(8, vw * .006);
@@ -480,11 +493,11 @@ function layoutSection05Screen() {
         }
     }
 
-    const holeW = section05Copy.offsetWidth * .78 / 2 + vw * .025;
-    const holeH = section05Copy.offsetHeight * .78 / 2 + vh * .035;
+    const holeW = storiesCopy.offsetWidth * .78 / 2 + vw * .025;
+    const holeH = storiesCopy.offsetHeight * .78 / 2 + vh * .035;
     const cells = [];
     columns.forEach(({ col, x, w }) => {
-        const h = w / SECTION05_RATIO;
+        const h = w / STORIES_RATIO;
         const pitch = h + gap;
         const rows = Math.ceil((vh / 2 + h) / pitch);
         for (let row = -rows; row <= rows; row++) {
@@ -496,22 +509,22 @@ function layoutSection05Screen() {
     });
     cells.sort((a, b) => Math.hypot(a.x, a.y * 1.4) - Math.hypot(b.x, b.y * 1.4));
 
-    if (section05Thumbs.length !== cells.length) {
-        section05Gallery.replaceChildren();
-        section05Thumbs = cells.map((_, index) => {
+    if (storiesThumbs.length !== cells.length) {
+        storiesGallery.replaceChildren();
+        storiesThumbs = cells.map((_, index) => {
             const thumb = document.createElement("img");
-            const id = section05Ids[index % section05Ids.length];
-            thumb.className = "section05-thumb";
+            const id = storiesIds[index % storiesIds.length];
+            thumb.className = "stories-thumb";
             thumb.alt = "";
             thumb.src = `https://img.littlefox.co.kr/static/contents/series/FS${String(id).padStart(4, "0")}/featured.jpg`;
             thumb.dataset.src = thumb.src;
-            section05Gallery.append(thumb);
+            storiesGallery.append(thumb);
             return thumb;
         });
     }
 
     cells.forEach((cell, index) => {
-        const thumb = section05Thumbs[index];
+        const thumb = storiesThumbs[index];
         thumb.style.width = `${cell.w}px`;
         thumb.style.height = `${cell.h}px`;
         thumb.dataset.x = cell.x;
@@ -520,35 +533,35 @@ function layoutSection05Screen() {
         thumb.dataset.h = cell.h;
         thumb.dataset.skew = Math.sign(cell.col) * Math.min(Math.abs(cell.col) * 1.8, 9);
         const ringW = holeW + baseWidth * .72;
-        const ringH = holeH + baseWidth / SECTION05_RATIO * .85;
+        const ringH = holeH + baseWidth / STORIES_RATIO * .85;
         const besideText = Math.abs(cell.x) - cell.w / 2 < ringW && Math.abs(cell.y) - cell.h / 2 < ringH;
-        const besideTable = Math.abs(cell.x) - cell.w / 2 < section05Levels.offsetWidth / 2 + vw * .09
-            && Math.abs(cell.y) - cell.h / 2 < section05Levels.offsetHeight / 2 + vh * .07;
+        const besideTable = Math.abs(cell.x) - cell.w / 2 < storiesLevels.offsetWidth / 2 + vw * .09
+            && Math.abs(cell.y) - cell.h / 2 < storiesLevels.offsetHeight / 2 + vh * .07;
         thumb.dataset.inner = besideText ? "1" : "";
         thumb.dataset.wide = !besideText && besideTable ? "1" : "";
     });
 }
 
-function setSection05Chart(progress) {
-    section05Segs.forEach(seg => {
+function setStoriesChart(progress) {
+    storiesSegs.forEach(seg => {
         const value = Number(seg.dataset.value) * progress;
         seg.style.width = `${value}%`;
         seg.querySelector("b").textContent = `${Math.round(value)}%`;
     });
 }
 
-function section05ChartT(progress) {
+function storiesChartT(progress) {
     const start = 0.18;
     const end = 0.34;
     return Math.min(1, Math.max(0, (progress - start) / (end - start)));
 }
 
-function section05ChartCoverThumbs() {
+function storiesChartCoverThumbs() {
     const vw = window.innerWidth;
     const vh = window.innerHeight;
     const halfW = Math.min(vw * .72, 1180) / 2 + vw * .04;
     const halfH = vh * .28;
-    return section05Thumbs.filter(thumb => {
+    return storiesThumbs.filter(thumb => {
         if (thumb.dataset.inner === "1") return true;
         const x = Math.abs(Number(thumb.dataset.x));
         const y = Math.abs(Number(thumb.dataset.y));
@@ -556,47 +569,47 @@ function section05ChartCoverThumbs() {
     });
 }
 
-function section05ChartPassThumbs(chartY) {
+function storiesChartPassThumbs(chartY) {
     const vw = window.innerWidth;
     const halfW = Math.min(vw * .72, 1180) / 2 + vw * .03;
-    const halfH = (section05Chart.offsetHeight || window.innerHeight * .34) / 2 + window.innerHeight * .05;
-    return section05Thumbs.filter(thumb => {
+    const halfH = (storiesChart.offsetHeight || window.innerHeight * .34) / 2 + window.innerHeight * .05;
+    return storiesThumbs.filter(thumb => {
         const dx = Math.abs(Number(thumb.dataset.x));
         const dy = Math.abs(Number(thumb.dataset.y) - chartY);
         return dx - Number(thumb.dataset.w) / 2 < halfW && dy - Number(thumb.dataset.h) / 2 < halfH;
     });
 }
 
-function section05LevelsT(progress) {
+function storiesLevelsT(progress) {
     const start = 0.5;
     const end = 0.68;
     return Math.min(1, Math.max(0, (progress - start) / (end - start)));
 }
 
-function section05TopicsT(progress) {
+function storiesTopicsT(progress) {
     const start = 0.72;
     const end = 0.9;
     return Math.min(1, Math.max(0, (progress - start) / (end - start)));
 }
 
-function section05LevelsCoverThumbs() {
+function storiesLevelsCoverThumbs() {
     const vw = window.innerWidth;
     const vh = window.innerHeight;
     const halfW = Math.min(vw * .92, 1380) / 2 + vw * .02;
     const halfH = vh * .46;
-    return section05Thumbs.filter(thumb => {
+    return storiesThumbs.filter(thumb => {
         const x = Math.abs(Number(thumb.dataset.x));
         const y = Math.abs(Number(thumb.dataset.y));
         return x - Number(thumb.dataset.w) / 2 < halfW && y - Number(thumb.dataset.h) / 2 < halfH;
     });
 }
 
-function section05CoverAmount(thumb, chartT, levelsT, chartCover, levelsCover) {
+function storiesCoverAmount(thumb, chartT, levelsT, chartCover, levelsCover) {
     return Math.max(chartCover.has(thumb) ? chartT : 0, levelsCover.has(thumb) ? levelsT : 0);
 }
 
-function section05SideFlyThumbs(chartCover, levelsCover) {
-    const side = section05Thumbs.filter(thumb => !chartCover.has(thumb) && !levelsCover.has(thumb));
+function storiesSideFlyThumbs(chartCover, levelsCover) {
+    const side = storiesThumbs.filter(thumb => !chartCover.has(thumb) && !levelsCover.has(thumb));
     const pick = (list) => {
         if (!list.length) return [];
         const byY = [...list].sort((a, b) => Number(a.dataset.y) - Number(b.dataset.y));
@@ -610,14 +623,14 @@ function section05SideFlyThumbs(chartCover, levelsCover) {
     ];
 }
 
-function section05ThumbAmount(thumb, chartT, levelsT, chartCover, levelsCover, fly) {
+function storiesThumbAmount(thumb, chartT, levelsT, chartCover, levelsCover, fly) {
     if (chartCover.has(thumb) || levelsCover.has(thumb)) {
-        return section05CoverAmount(thumb, chartT, levelsT, chartCover, levelsCover);
+        return storiesCoverAmount(thumb, chartT, levelsT, chartCover, levelsCover);
     }
     return fly && fly.has(thumb) ? levelsT : 0;
 }
 
-function section05PlaceThumb(thumb, amount) {
+function storiesPlaceThumb(thumb, amount) {
     gsap.set(thumb, {
         xPercent: -50,
         yPercent: -50,
@@ -632,19 +645,19 @@ function section05PlaceThumb(thumb, amount) {
     });
 }
 
-function paintSection05Panels(chartT, levelsT, topicsT = 0, thumbs = true) {
-    const shift = section05.clientHeight || window.innerHeight;
+function paintStoriesPanels(chartT, levelsT, topicsT = 0, thumbs = true) {
+    const shift = stories.clientHeight || window.innerHeight;
     const travel = chartT + levelsT + topicsT;
     const chartY = (1 - travel) * shift;
     const levelsY = (1 - levelsT - topicsT) * shift;
     const topicsY = (1 - topicsT) * shift;
-    const chartCover = new Set(section05ChartCoverThumbs());
-    const chartPass = new Set(chartT > 0.02 ? section05ChartPassThumbs(chartY) : []);
-    const levelsCover = new Set(section05LevelsCoverThumbs());
-    const fly = new Set(section05SideFlyThumbs(chartCover, levelsCover));
+    const chartCover = new Set(storiesChartCoverThumbs());
+    const chartPass = new Set(chartT > 0.02 ? storiesChartPassThumbs(chartY) : []);
+    const levelsCover = new Set(storiesLevelsCoverThumbs());
+    const fly = new Set(storiesSideFlyThumbs(chartCover, levelsCover));
     const clearT = Math.min(1, topicsT * 1.7);
-    gsap.set(section05Copy, { y: -travel * shift, opacity: 1 });
-    gsap.set(section05Chart, {
+    gsap.set(storiesCopy, { y: -travel * shift, opacity: 1 });
+    gsap.set(storiesChart, {
         xPercent: -50,
         yPercent: -50,
         x: 0,
@@ -653,7 +666,7 @@ function paintSection05Panels(chartT, levelsT, topicsT = 0, thumbs = true) {
         opacity: 1,
         visibility: Math.abs(chartY) < shift * 1.05 ? "visible" : "hidden"
     });
-    gsap.set(section05Levels, {
+    gsap.set(storiesLevels, {
         xPercent: -50,
         yPercent: -50,
         x: 0,
@@ -662,21 +675,21 @@ function paintSection05Panels(chartT, levelsT, topicsT = 0, thumbs = true) {
         opacity: 1,
         visibility: levelsT > 0.001 && levelsY > -shift * 1.02 ? "visible" : "hidden"
     });
-    gsap.set(section05Topics, {
+    gsap.set(storiesTopics, {
         y: topicsY,
         visibility: topicsT > 0.001 ? "visible" : "hidden"
     });
-    gsap.set(section05TopicReveals, { opacity: 1, y: 0 });
+    gsap.set(storiesTopicReveals, { opacity: 1, y: 0 });
     const ready = topicsT > 0.98;
-    section05Topics.classList.toggle("is-ready", ready);
-    section05Topics.setAttribute("aria-hidden", ready ? "false" : "true");
-    const slots = topicsT > 0.001 ? section05EnsureCast() : [];
+    storiesTopics.classList.toggle("is-ready", ready);
+    storiesTopics.setAttribute("aria-hidden", ready ? "false" : "true");
+    const slots = topicsT > 0.001 ? storiesEnsureCast() : [];
     // 전환 중(switching)에는 슬롯으로 날아가는 카드를 놓치면 원래 자리로 돌아오지 못하므로 해제하지 않는다
-    if (topicsT <= 0.001 && !switching) section05ReleaseCast();
+    if (topicsT <= 0.001 && !switching) storiesReleaseCast();
     if (!thumbs) return;
-    section05Thumbs.forEach(thumb => {
-        if (section05HoldThumbs && section05HoldThumbs.has(thumb)) return;
-        const castIndex = section05Cast.indexOf(thumb);
+    storiesThumbs.forEach(thumb => {
+        if (storiesHoldThumbs && storiesHoldThumbs.has(thumb)) return;
+        const castIndex = storiesCast.indexOf(thumb);
         if (castIndex >= 0 && slots[castIndex]) {
             const point = slots[castIndex];
             const homeX = Number(thumb.dataset.x);
@@ -724,7 +737,7 @@ function paintSection05Panels(chartT, levelsT, topicsT = 0, thumbs = true) {
             return;
         }
         const amount = Math.max(
-            section05CoverAmount(thumb, chartT, levelsT, chartCover, levelsCover),
+            storiesCoverAmount(thumb, chartT, levelsT, chartCover, levelsCover),
             chartPass.has(thumb) ? 1 : 0,
             clearT
         );
@@ -737,30 +750,30 @@ function paintSection05Panels(chartT, levelsT, topicsT = 0, thumbs = true) {
             rotation: 0
         });
     });
-    setSection05Chart(1);
+    setStoriesChart(1);
 }
 
-function resetSection05() {
-    section05Step = 0;
-    section05Cast = [];
-    layoutSection05Screen();
-    gsap.killTweensOf([section05Copy, section05Hint, section05Chart, section05Levels, section05Topics, ...section05TopicReveals, ...section05Thumbs]);
-    gsap.set(section05Copy, { y: 0, scale: 1, opacity: 1 });
-    gsap.set(section05Chart, { opacity: 1, xPercent: -50, yPercent: -50, x: 0, y: window.innerHeight, scale: 1, visibility: "hidden" });
-    gsap.set(section05Levels, { opacity: 1, xPercent: -50, yPercent: -50, x: 0, y: window.innerHeight, scale: 1, visibility: "hidden" });
-    gsap.set(section05Topics, { visibility: "hidden" });
-    gsap.set(section05TopicReveals, { opacity: 0, y: 16 });
-    section05Gallery.style.zIndex = "";
-    section05Levels.style.zIndex = "";
-    section05TopicExit = false;
-    section05HoldThumbs = null;
-    section05SlotCache = null;
-    section05Topics.classList.remove("is-ready");
-    section05Topics.setAttribute("aria-hidden", "true");
-    setSection05Topic(0);
-    setSection05Chart(0);
-    gsap.set(section05Hint, { opacity: 1, y: 0 });
-    section05Thumbs.forEach(thumb => {
+function resetStories() {
+    storiesStep = 0;
+    storiesCast = [];
+    layoutStoriesScreen();
+    gsap.killTweensOf([storiesCopy, storiesHint, storiesChart, storiesLevels, storiesTopics, ...storiesTopicReveals, ...storiesThumbs]);
+    gsap.set(storiesCopy, { y: 0, scale: 1, opacity: 1 });
+    gsap.set(storiesChart, { opacity: 1, xPercent: -50, yPercent: -50, x: 0, y: window.innerHeight, scale: 1, visibility: "hidden" });
+    gsap.set(storiesLevels, { opacity: 1, xPercent: -50, yPercent: -50, x: 0, y: window.innerHeight, scale: 1, visibility: "hidden" });
+    gsap.set(storiesTopics, { visibility: "hidden" });
+    gsap.set(storiesTopicReveals, { opacity: 0, y: 16 });
+    storiesGallery.style.zIndex = "";
+    storiesLevels.style.zIndex = "";
+    storiesTopicExit = false;
+    storiesHoldThumbs = null;
+    storiesSlotCache = null;
+    storiesTopics.classList.remove("is-ready");
+    storiesTopics.setAttribute("aria-hidden", "true");
+    setStoriesTopic(0);
+    setStoriesChart(0);
+    gsap.set(storiesHint, { opacity: 1, y: 0 });
+    storiesThumbs.forEach(thumb => {
         thumb.style.zIndex = "";
         gsap.set(thumb, {
             xPercent: -50,
@@ -778,22 +791,22 @@ function resetSection05() {
     });
 }
 
-function showSection05Gallery() {
-    if (section05Step || switching) return;
-    section05Step = 1;
+function showStoriesGallery() {
+    if (storiesStep || switching) return;
+    storiesStep = 1;
     switching = true;
-    if (section05Tl) section05Tl.kill();
+    if (storiesTl) storiesTl.kill();
 
-    section05Tl = gsap.timeline({
+    storiesTl = gsap.timeline({
         onComplete: () => {
             switching = false;
-            section05Follow();
-            if (section05Step === 1) paintSection05Panels(section05ChartT(section05Progress), section05LevelsT(section05Progress), section05TopicsT(section05Progress));
+            storiesFollow();
+            if (storiesStep === 1) paintStoriesPanels(storiesChartT(storiesProgress), storiesLevelsT(storiesProgress), storiesTopicsT(storiesProgress));
         }
     });
-    section05Tl
-        .to(section05Copy, { scale: .78, duration: 1.05, ease: "power3.inOut" }, 0)
-        .to(section05Thumbs, {
+    storiesTl
+        .to(storiesCopy, { scale: .78, duration: 1.05, ease: "power3.inOut" }, 0)
+        .to(storiesThumbs, {
             x: (_, thumb) => Number(thumb.dataset.x),
             y: (_, thumb) => Number(thumb.dataset.y),
             skewY: (_, thumb) => Number(thumb.dataset.skew),
@@ -806,20 +819,20 @@ function showSection05Gallery() {
         }, .05);
 }
 
-function hideSection05Gallery() {
-    if (!section05Step || switching) return;
+function hideStoriesGallery() {
+    if (!storiesStep || switching) return;
     switching = true;
-    if (section05Tl) section05Tl.kill();
-    paintSection05Panels(0, 0);
+    if (storiesTl) storiesTl.kill();
+    paintStoriesPanels(0, 0);
 
-    section05Tl = gsap.timeline({
+    storiesTl = gsap.timeline({
         onComplete: () => {
-            section05Step = 0;
-            switching = false; section05Follow();
+            storiesStep = 0;
+            switching = false; storiesFollow();
         }
     });
-    section05Tl
-        .to(section05Thumbs, {
+    storiesTl
+        .to(storiesThumbs, {
             x: (_, thumb) => Number(thumb.dataset.x) * .35,
             y: (_, thumb) => Number(thumb.dataset.y) * .35,
             skewY: 0,
@@ -829,15 +842,15 @@ function hideSection05Gallery() {
             ease: "power3.in",
             stagger: { amount: .35, from: "end" }
         })
-        .to(section05Copy, { scale: 1, duration: .55, ease: "power3.out" }, "-=.3");
+        .to(storiesCopy, { scale: 1, duration: .55, ease: "power3.out" }, "-=.3");
 }
 
-function section05InnerThumbs() {
-    return section05Thumbs.filter(thumb => thumb.dataset.inner === "1");
+function storiesInnerThumbs() {
+    return storiesThumbs.filter(thumb => thumb.dataset.inner === "1");
 }
 
 // 소개 페이지 '동화 주제별 구성'의 편수, 작품, 썸네일
-const section05TopicData = [
+const storiesTopicData = [
     { name: "세계명작", count: "1,542", lines: ["오래 사랑받아 온 이야기들을", "영어 동화로 만나보세요."], stories: [
         { title: "피터 래빗", src: "https://img.littlefox.co.kr/static/contents/series/FS0087/featured.jpg" },
         { title: "미녀와 야수", src: "https://img.littlefox.co.kr/static/contents/series/FS0176/featured.jpg" },
@@ -1072,8 +1085,8 @@ const section05TopicData = [
     ] }
 ];
 
-// 주제 버튼·편수·작품 제목은 section05TopicData만 쓴다
-section05Topics.querySelector(".section05-topics-chips").replaceChildren(...section05TopicData.map((topic, index) => {
+// 주제 버튼·편수·작품 제목은 storiesTopicData만 쓴다
+storiesTopics.querySelector(".stories-topics-chips").replaceChildren(...storiesTopicData.map((topic, index) => {
     const button = document.createElement("button");
     button.type = "button";
     button.textContent = topic.name;
@@ -1081,71 +1094,71 @@ section05Topics.querySelector(".section05-topics-chips").replaceChildren(...sect
     button.setAttribute("aria-pressed", index ? "false" : "true");
     return button;
 }));
-section05TopicButtons = [...section05Topics.querySelectorAll(".section05-topics-chips button")];
-setSection05Topic(0);
+storiesTopicButtons = [...storiesTopics.querySelectorAll(".stories-topics-chips button")];
+setStoriesTopic(0);
 
-function section05VisibleStories() {
-    const stories = section05TopicData[section05TopicIndex].stories;
-    return section05TopicLabels.map((_, labelIndex) => stories[(section05TopicOffset + labelIndex) % stories.length]);
+function storiesVisibleStories() {
+    const stories = storiesTopicData[storiesTopicIndex].stories;
+    return storiesTopicLabels.map((_, labelIndex) => stories[(storiesTopicOffset + labelIndex) % stories.length]);
 }
 
-function applySection05TopicSlides(animate) {
-    const visible = section05VisibleStories();
-    section05TopicLabels.forEach((label, labelIndex) => {
+function applyStoriesTopicSlides(animate) {
+    const visible = storiesVisibleStories();
+    storiesTopicLabels.forEach((label, labelIndex) => {
         label.textContent = visible[labelIndex].title;
     });
-    if (!section05Cast.length) return;
-    section05Cast.forEach((thumb, thumbIndex) => {
+    if (!storiesCast.length) return;
+    storiesCast.forEach((thumb, thumbIndex) => {
         thumb.src = visible[thumbIndex].src;
     });
-    if (animate) gsap.fromTo(section05Cast, { opacity: .2 }, { opacity: 1, duration: .35, overwrite: "auto" });
+    if (animate) gsap.fromTo(storiesCast, { opacity: .2 }, { opacity: 1, duration: .35, overwrite: "auto" });
 }
 
-function setSection05Topic(index) {
-    const topic = section05TopicData[index];
+function setStoriesTopic(index) {
+    const topic = storiesTopicData[index];
     if (!topic) return;
-    section05TopicIndex = index;
-    section05TopicOffset = 0;
-    section05TopicButtons.forEach((button, buttonIndex) => {
+    storiesTopicIndex = index;
+    storiesTopicOffset = 0;
+    storiesTopicButtons.forEach((button, buttonIndex) => {
         const active = buttonIndex === index;
         button.classList.toggle("is-active", active);
         button.setAttribute("aria-pressed", active ? "true" : "false");
     });
-    section05TopicName.textContent = topic.name;
-    section05TopicCount.textContent = topic.count;
-    section05TopicDesc.replaceChildren();
+    storiesTopicName.textContent = topic.name;
+    storiesTopicCount.textContent = topic.count;
+    storiesTopicDesc.replaceChildren();
     topic.lines.forEach((line, lineIndex) => {
-        if (lineIndex) section05TopicDesc.append(document.createElement("br"));
-        section05TopicDesc.append(line);
+        if (lineIndex) storiesTopicDesc.append(document.createElement("br"));
+        storiesTopicDesc.append(line);
     });
-    applySection05TopicSlides(section05Cast.length > 0);
+    applyStoriesTopicSlides(storiesCast.length > 0);
 }
 
-function moveSection05Topic(dir) {
-    const total = section05TopicData[section05TopicIndex].stories.length;
-    section05TopicOffset = (section05TopicOffset + dir + total) % total;
-    applySection05TopicSlides(true);
+function moveStoriesTopic(dir) {
+    const total = storiesTopicData[storiesTopicIndex].stories.length;
+    storiesTopicOffset = (storiesTopicOffset + dir + total) % total;
+    applyStoriesTopicSlides(true);
 }
 
-section05Topics.querySelector(".section05-topics-chips").addEventListener("click", event => {
+storiesTopics.querySelector(".stories-topics-chips").addEventListener("click", event => {
     const button = event.target.closest("button");
-    if (!button || !section05Topics.classList.contains("is-ready") || button.classList.contains("is-active")) return;
-    const index = section05TopicButtons.indexOf(button);
+    if (!button || !storiesTopics.classList.contains("is-ready") || button.classList.contains("is-active")) return;
+    const index = storiesTopicButtons.indexOf(button);
     if (index < 0) return;
-    setSection05Topic(index);
+    setStoriesTopic(index);
 });
 
-section05Topics.querySelector(".section05-topics-nav").addEventListener("click", event => {
+storiesTopics.querySelector(".stories-topics-nav").addEventListener("click", event => {
     const button = event.target.closest("button");
-    if (!button || !section05Topics.classList.contains("is-ready")) return;
-    moveSection05Topic(Number(button.dataset.dir));
+    if (!button || !storiesTopics.classList.contains("is-ready")) return;
+    moveStoriesTopic(Number(button.dataset.dir));
 });
 
-function section05SlotPoints() {
-    const root = section05.getBoundingClientRect();
+function storiesSlotPoints() {
+    const root = stories.getBoundingClientRect();
     const originX = root.left + root.width / 2;
     const originY = root.top + root.height / 2;
-    return [...section05Topics.querySelectorAll(".section05-slot-frame")].map(frame => {
+    return [...storiesTopics.querySelectorAll(".stories-slot-frame")].map(frame => {
         const rect = frame.getBoundingClientRect();
         return {
             x: rect.left + rect.width / 2 - originX,
@@ -1156,33 +1169,33 @@ function section05SlotPoints() {
     });
 }
 
-let section05SlotCache = null;
+let storiesSlotCache = null;
 
-function section05SettledSlots() {
-    if (section05SlotCache && section05SlotCache.length && section05SlotCache[0].w > 2) return section05SlotCache;
-    const y = gsap.getProperty(section05Topics, "y");
-    gsap.set(section05Topics, { visibility: "visible", y: 0 });
-    const points = section05SlotPoints();
-    gsap.set(section05Topics, { y: y || 0 });
+function storiesSettledSlots() {
+    if (storiesSlotCache && storiesSlotCache.length && storiesSlotCache[0].w > 2) return storiesSlotCache;
+    const y = gsap.getProperty(storiesTopics, "y");
+    gsap.set(storiesTopics, { visibility: "visible", y: 0 });
+    const points = storiesSlotPoints();
+    gsap.set(storiesTopics, { y: y || 0 });
     if (!points.length || points[0].w < 2) return points;
-    section05SlotCache = points;
+    storiesSlotCache = points;
     return points;
 }
 
-function section05EnsureCast() {
-    if (section05Cast.length) return section05SettledSlots();
-    const points = section05SettledSlots();
+function storiesEnsureCast() {
+    if (storiesCast.length) return storiesSettledSlots();
+    const points = storiesSettledSlots();
     if (!points.length) return [];
-    const away = new Set(section05SideFlyThumbs(new Set(section05ChartCoverThumbs()), new Set(section05LevelsCoverThumbs())));
+    const away = new Set(storiesSideFlyThumbs(new Set(storiesChartCoverThumbs()), new Set(storiesLevelsCoverThumbs())));
     const targetY = points.reduce((sum, point) => sum + point.y, 0) / points.length;
-    section05Cast = section05PickCast(points.length, targetY, section05Thumbs.filter(thumb => !away.has(thumb)));
-    applySection05TopicSlides(false);
+    storiesCast = storiesPickCast(points.length, targetY, storiesThumbs.filter(thumb => !away.has(thumb)));
+    applyStoriesTopicSlides(false);
     return points;
 }
 
-function section05ReleaseCast() {
-    if (!section05Cast.length) return;
-    section05Cast.forEach(thumb => {
+function storiesReleaseCast() {
+    if (!storiesCast.length) return;
+    storiesCast.forEach(thumb => {
         gsap.set(thumb, {
             clearProps: "zIndex",
             width: Number(thumb.dataset.w),
@@ -1191,11 +1204,11 @@ function section05ReleaseCast() {
         });
         if (thumb.dataset.src) thumb.src = thumb.dataset.src;
     });
-    section05Cast = [];
+    storiesCast = [];
 }
-function section05PickCast(count, targetY, source) {
-    const visible = (source || section05Thumbs).filter(thumb => thumb.dataset.inner !== "1" && thumb.dataset.wide !== "1");
-    const pool = visible.length >= count ? visible : section05Thumbs;
+function storiesPickCast(count, targetY, source) {
+    const visible = (source || storiesThumbs).filter(thumb => thumb.dataset.inner !== "1" && thumb.dataset.wide !== "1");
+    const pool = visible.length >= count ? visible : storiesThumbs;
     const nearest = [...pool].sort((a, b) => {
         const delta = Math.abs(Number(a.dataset.y) - targetY) - Math.abs(Number(b.dataset.y) - targetY);
         return delta || Number(a.dataset.x) - Number(b.dataset.x);
@@ -1214,33 +1227,33 @@ function section05PickCast(count, targetY, source) {
     return picked;
 }
 
-function showSection05Topics() {
-    if (section05Step !== 3 || switching) return;
-    section05Step = 4;
+function showStoriesTopics() {
+    if (storiesStep !== 3 || switching) return;
+    storiesStep = 4;
     switching = true;
-    if (section05Tl) section05Tl.kill();
+    if (storiesTl) storiesTl.kill();
 
-    gsap.set(section05Topics, { visibility: "visible" });
-    gsap.set(section05TopicReveals, { opacity: 0, y: 16 });
-    section05Gallery.style.zIndex = "4";
-    section05Levels.style.zIndex = "3";
-    const points = section05SlotPoints();
+    gsap.set(storiesTopics, { visibility: "visible" });
+    gsap.set(storiesTopicReveals, { opacity: 0, y: 16 });
+    storiesGallery.style.zIndex = "4";
+    storiesLevels.style.zIndex = "3";
+    const points = storiesSlotPoints();
     const targetY = points.reduce((sum, point) => sum + point.y, 0) / points.length;
-    section05Cast = section05PickCast(points.length, targetY);
-    applySection05TopicSlides(false);
-    const rest = section05Thumbs.filter(thumb => !section05Cast.includes(thumb));
+    storiesCast = storiesPickCast(points.length, targetY);
+    applyStoriesTopicSlides(false);
+    const rest = storiesThumbs.filter(thumb => !storiesCast.includes(thumb));
 
-    section05Tl = gsap.timeline({
+    storiesTl = gsap.timeline({
         onComplete: () => {
-            section05Topics.classList.add("is-ready");
-            section05Topics.setAttribute("aria-hidden", "false");
-            gsap.set(section05Levels, { visibility: "hidden" });
+            storiesTopics.classList.add("is-ready");
+            storiesTopics.setAttribute("aria-hidden", "false");
+            gsap.set(storiesLevels, { visibility: "hidden" });
             gsap.set(rest, { opacity: 0 });
-            switching = false; section05Follow();
+            switching = false; storiesFollow();
         }
     });
-    section05Tl
-        .to(section05Levels, { opacity: 0, y: 14, duration: .32, ease: "power2.in" }, 0)
+    storiesTl
+        .to(storiesLevels, { opacity: 0, y: 14, duration: .32, ease: "power2.in" }, 0)
         .to(rest, {
             x: (_, thumb) => Number(thumb.dataset.x) * .9,
             y: (_, thumb) => Number(thumb.dataset.y) * .86,
@@ -1251,7 +1264,7 @@ function showSection05Topics() {
             duration: .62,
             ease: "power2.inOut"
         }, 0)
-        .to(section05TopicReveals, {
+        .to(storiesTopicReveals, {
             opacity: 1,
             y: 0,
             duration: .55,
@@ -1259,9 +1272,9 @@ function showSection05Topics() {
             stagger: { each: .03 }
         }, .3);
 
-    section05Cast.forEach((thumb, index) => {
+    storiesCast.forEach((thumb, index) => {
         const point = points[index];
-        section05Tl.to(thumb, {
+        storiesTl.to(thumb, {
             x: point.x,
             y: point.y,
             width: point.w,
@@ -1278,48 +1291,48 @@ function showSection05Topics() {
     });
 }
 
-function hideSection05Topics() {
-    if (section05Step !== 4 || switching) return;
+function hideStoriesTopics() {
+    if (storiesStep !== 4 || switching) return;
     switching = true;
-    section05TopicExit = true;
-    section05Topics.classList.remove("is-ready");
-    section05Topics.setAttribute("aria-hidden", "true");
-    if (section05Tl) section05Tl.kill();
+    storiesTopicExit = true;
+    storiesTopics.classList.remove("is-ready");
+    storiesTopics.setAttribute("aria-hidden", "true");
+    if (storiesTl) storiesTl.kill();
 
-    const cast = section05Cast.slice();
+    const cast = storiesCast.slice();
     cast.forEach(thumb => { if (thumb.dataset.src) thumb.src = thumb.dataset.src; });
-    const chartT = section05ChartT(section05Progress);
-    const levelsT = section05LevelsT(section05Progress);
-    const chartCover = new Set(section05ChartCoverThumbs());
-    const levelsCover = new Set(section05LevelsCoverThumbs());
-    const fly = new Set(section05SideFlyThumbs(chartCover, levelsCover));
-    const amountOf = thumb => section05ThumbAmount(thumb, chartT, levelsT, chartCover, levelsCover, fly);
-    const rest = section05Thumbs.filter(thumb => !cast.includes(thumb));
+    const chartT = storiesChartT(storiesProgress);
+    const levelsT = storiesLevelsT(storiesProgress);
+    const chartCover = new Set(storiesChartCoverThumbs());
+    const levelsCover = new Set(storiesLevelsCoverThumbs());
+    const fly = new Set(storiesSideFlyThumbs(chartCover, levelsCover));
+    const amountOf = thumb => storiesThumbAmount(thumb, chartT, levelsT, chartCover, levelsCover, fly);
+    const rest = storiesThumbs.filter(thumb => !cast.includes(thumb));
     const returning = [];
     rest.forEach(thumb => {
         const amount = amountOf(thumb);
-        if (amount > 0.02) section05PlaceThumb(thumb, amount);
+        if (amount > 0.02) storiesPlaceThumb(thumb, amount);
         else returning.push(thumb);
     });
-    section05HoldThumbs = new Set([...returning, ...cast]);
-    section05Gallery.style.zIndex = "";
-    section05Levels.style.zIndex = "";
-    gsap.set(section05TopicReveals, { opacity: 0 });
-    gsap.set(section05Topics, { visibility: "hidden" });
-    paintSection05Panels(chartT, levelsT);
+    storiesHoldThumbs = new Set([...returning, ...cast]);
+    storiesGallery.style.zIndex = "";
+    storiesLevels.style.zIndex = "";
+    gsap.set(storiesTopicReveals, { opacity: 0 });
+    gsap.set(storiesTopics, { visibility: "hidden" });
+    paintStoriesPanels(chartT, levelsT);
 
-    section05Tl = gsap.timeline({
+    storiesTl = gsap.timeline({
         onComplete: () => {
             cast.forEach(thumb => { thumb.style.zIndex = ""; });
-            section05Cast = [];
-            section05HoldThumbs = null;
-            section05TopicExit = false;
-            section05Step = 3;
-            switching = false; section05Follow();
+            storiesCast = [];
+            storiesHoldThumbs = null;
+            storiesTopicExit = false;
+            storiesStep = 3;
+            switching = false; storiesFollow();
         }
     });
     if (returning.length) {
-        section05Tl.to(returning, {
+        storiesTl.to(returning, {
             x: (_, thumb) => Number(thumb.dataset.x),
             y: (_, thumb) => Number(thumb.dataset.y),
             skewY: (_, thumb) => Number(thumb.dataset.skew),
@@ -1333,7 +1346,7 @@ function hideSection05Topics() {
 
     cast.forEach((thumb, index) => {
         const amount = amountOf(thumb);
-        section05Tl.to(thumb, {
+        storiesTl.to(thumb, {
             x: Number(thumb.dataset.x),
             y: Number(thumb.dataset.y),
             width: Number(thumb.dataset.w),
@@ -1349,10 +1362,10 @@ function hideSection05Topics() {
     });
 }
 
-resetSection05();
+resetStories();
 
-const section05Reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-function section05Split(self) {
+const storiesReduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+function storiesSplit(self) {
     const total = self.end - self.start;
     const extra = window.innerHeight * 1.2;
     const main = Math.max(window.innerHeight, total - extra);
@@ -1363,71 +1376,59 @@ function section05Split(self) {
     };
 }
 
-function paintSection05Exit(exit) {
-    if (!section05Stage) return;
-    const iris = clamp(exit / SECTION05_IRIS_END, 0, 1);
+function paintStoriesExit(exit) {
+    if (!storiesStage) return;
+    const iris = clamp(exit / STORIES_IRIS_END, 0, 1);
     if (exit <= 0) {
-        gsap.set(section05Stage, { clearProps: "clipPath,opacity" });
-        gsap.set(section05, { backgroundColor: "#fff" });
-        section05Stage.style.pointerEvents = "";
+        gsap.set(storiesStage, { clearProps: "clipPath,opacity" });
+        gsap.set(stories, { backgroundColor: "#fff" });
+        storiesStage.style.pointerEvents = "";
         return;
     }
     const radius = lerp(Math.hypot(window.innerWidth, window.innerHeight) * 0.5, 5, iris);
     const ink = clamp(iris / 0.18, 0, 1);
-    gsap.set(section05Stage, {
+    gsap.set(storiesStage, {
         clipPath: `circle(${radius}px at 50% 50%)`,
         opacity: iris >= 0.98 ? 0 : 1
     });
-    gsap.set(section05, {
+    gsap.set(stories, {
         backgroundColor: gsap.utils.interpolate("#ffffff", "#111111", ink)
     });
-    section05Stage.style.pointerEvents = "none";
+    storiesStage.style.pointerEvents = "none";
 }
 
-function syncSection05Scroll(self) {
-    const split = section05Split(self);
-    section05Progress = split.main;
-    if (!section05GalleryArmed && section05ScrolledIn(self) >= SECTION05_GALLERY_SCROLL) {
-        section05GalleryArmed = true;
+function syncStoriesScroll(self) {
+    const split = storiesSplit(self);
+    storiesProgress = split.main;
+    if (!storiesGalleryArmed && storiesScrolledIn(self) >= STORIES_GALLERY_SCROLL) {
+        storiesGalleryArmed = true;
     }
-    const galleryIntro = section05Step === 0 || (switching && section05Step === 1 && !section05TopicExit);
-    if (section05GalleryArmed && section05ChartT(section05Progress) > 0 && galleryIntro) {
-        settleSection05Gallery();
+    const galleryIntro = storiesStep === 0 || (switching && storiesStep === 1 && !storiesTopicExit);
+    if (storiesGalleryArmed && storiesChartT(storiesProgress) > 0 && galleryIntro) {
+        settleStoriesGallery();
     }
-    section05Want = section05GalleryArmed ? 1 : 0;
-    section05Follow();
-    if (section05TopicExit || (section05GalleryArmed && (section05Step === 1 || switching))) {
-        paintSection05Panels(section05ChartT(section05Progress), section05LevelsT(section05Progress), section05TopicsT(section05Progress), !switching || section05TopicExit);
+    storiesWant = storiesGalleryArmed ? 1 : 0;
+    storiesFollow();
+    if (storiesTopicExit || (storiesGalleryArmed && (storiesStep === 1 || switching))) {
+        paintStoriesPanels(storiesChartT(storiesProgress), storiesLevelsT(storiesProgress), storiesTopicsT(storiesProgress), !switching || storiesTopicExit);
     }
-    paintSection05Exit(split.exit);
+    paintStoriesExit(split.exit);
     placeScrollDotFromExit(split.exit);
     paintScrollConnector();
 }
 
-if (!section05Reduce) {
-    const section05Trigger = ScrollTrigger.create({
-        trigger: section05Scroll,
+if (!storiesReduce) {
+    const storiesTrigger = ScrollTrigger.create({
+        trigger: storiesScroll,
         start: "top top",
         end: "bottom bottom",
-        onLeaveBack: disarmSection05Gallery,
-        onUpdate: syncSection05Scroll
+        onLeaveBack: disarmStoriesGallery,
+        onUpdate: syncStoriesScroll
     });
-    if (section05Trigger.isActive) syncSection05Scroll(section05Trigger);
+    if (storiesTrigger.isActive) syncStoriesScroll(storiesTrigger);
 }
 
 }
-
-let scrollDrawActive = false;
-let scrollDrawProgress = 0;
-const scrollDot = document.querySelector(".scroll-draw__dot");
-const scrollDrawPath = document.querySelector("#draw-path");
-const scrollLpPath = document.querySelector("#lp-player-path");
-const scrollStem = document.querySelector(".scroll-draw__stem");
-const scrollDrawSvg = document.querySelector(".scroll-draw");
-const scrollExitPath = document.querySelector(".scroll-exit__path");
-const scrollExitStem = document.querySelector(".scroll-exit__stem");
-const scrollOpen = document.querySelector(".scroll-open");
-const scrollBloom = document.querySelector(".scroll-open__bloom");
 
 function scrollDrawLengths() {
     const noteLen = scrollDrawPath ? scrollDrawPath.getTotalLength() : 0;
@@ -1457,19 +1458,17 @@ function placeScrollDot(progress) {
 }
 
 function connectorGrow() {
-    if (!section05Scroll || !scrollDrawSvg) return 0;
+    if (!storiesScroll || !scrollDrawSvg) return 0;
     const scroll = window.scrollY;
-    const sectionTop = section05Scroll.getBoundingClientRect().top + scroll;
-    const total = section05Scroll.offsetHeight - window.innerHeight;
+    const sectionTop = storiesScroll.getBoundingClientRect().top + scroll;
+    const total = storiesScroll.offsetHeight - window.innerHeight;
     const extra = window.innerHeight * 1.2;
     const main = Math.max(window.innerHeight, total - extra);
-    const growStart = sectionTop + main + extra * SECTION05_IRIS_END;
+    const growStart = sectionTop + main + extra * STORIES_IRIS_END;
     const growEnd = scrollDrawSvg.getBoundingClientRect().top + scroll - window.innerHeight * 0.8;
     if (growEnd <= growStart) return scroll >= growEnd ? 1 : 0;
     return clamp((scroll - growStart) / (growEnd - growStart), 0, 1);
 }
-
-let scrollDrawHold = 0;
 
 function alignScrollDraw() {
     if (!scrollDrawSvg) return;
@@ -1480,7 +1479,7 @@ function alignScrollDraw() {
 }
 
 function updateRecordHold() {
-    if (!scrollDrawSvg || !scrollLpPath) {
+    if (scrollDrawMeasuring || !scrollDrawSvg || !scrollLpPath) {
         scrollDrawHold = 0;
         return;
     }
@@ -1506,13 +1505,13 @@ function updateRecordHold() {
 }
 
 function paintScrollConnector() {
-    if (!scrollStem || !scrollDrawPath || !section05 || reduceMotion) return;
+    if (!scrollStem || !scrollDrawPath || !stories || reduceMotion) return;
     updateRecordHold();
     alignScrollDraw();
     const pathStart = scrollDotPoint(0);
     if (!pathStart) return;
     const grow = connectorGrow();
-    const originY = section05.getBoundingClientRect().top + section05.clientHeight / 2;
+    const originY = stories.getBoundingClientRect().top + stories.clientHeight / 2;
     const tipY = lerp(originY, pathStart.y, grow);
     const top = Math.min(originY, tipY);
     const height = Math.abs(tipY - originY);
@@ -1531,7 +1530,7 @@ function paintScrollConnector() {
 
 function placeScrollDotFromExit(exit) {
     if (!scrollDot || scrollDrawActive || connectorGrow() > 0) return;
-    const iris = clamp(exit / SECTION05_IRIS_END, 0, 1);
+    const iris = clamp(exit / STORIES_IRIS_END, 0, 1);
     if (iris < 0.92) {
         gsap.set(scrollDot, { opacity: 0 });
         return;
@@ -1560,6 +1559,7 @@ function hideScrollExit() {
     if (scrollExitPath) scrollExitPath.style.opacity = "0";
     if (scrollExitStem) gsap.set(scrollExitStem, { opacity: 0, height: 0 });
     if (scrollBloom) gsap.set(scrollBloom, { opacity: 0, scale: 1 });
+    if (scrollDot && scrollDrawProgress >= 0.995) gsap.set(scrollDot, { opacity: 0, scale: 1 });
 }
 
 function paintScrollExit() {
@@ -1629,17 +1629,20 @@ function paintScrollExit() {
 
     const travel = Math.max(1, scrollOpen.offsetHeight - window.innerHeight);
     const bloomT = clamp((scroll - openTop) / travel, 0, 1);
-    const showBloom = scroll >= openTop && openRect.bottom > 0;
-    if (scrollBloom) {
-        gsap.set(scrollBloom, {
-            opacity: showBloom ? 1 : 0,
-            scale: lerp(1, Math.hypot(window.innerWidth, window.innerHeight) / 12 * 1.08, bloomT)
-        });
-    }
+    const showBloom = scroll >= openTop && openRect.bottom > 0 && straightT >= 1;
+    const cover = Math.hypot(window.innerWidth, window.innerHeight) / 12 * 1.08;
+    if (scrollBloom) gsap.set(scrollBloom, { opacity: 0, scale: 1 });
 
     if (scrollDot && (!scrollDrawActive || scrollDrawProgress >= 1)) {
-        if (showBloom && bloomT > 0.2) gsap.set(scrollDot, { opacity: 0, scale: 1 });
-        else if (curveT < 1) {
+        if (showBloom) {
+            gsap.set(scrollDot, {
+                x: centerX,
+                y: window.innerHeight / 2,
+                scale: lerp(1, cover, bloomT),
+                opacity: 1,
+                transformOrigin: "50% 50%"
+            });
+        } else if (curveT < 1) {
             const tip = scrollExitPath.getPointAtLength(Math.min(length, drawn));
             gsap.set(scrollDot, { x: tip.x, y: tip.y, scale: 1, opacity: 1 });
         } else {
@@ -1651,6 +1654,7 @@ function paintScrollExit() {
         scrollExitPath.style.opacity = "0";
         if (scrollExitStem) gsap.set(scrollExitStem, { opacity: 0 });
     }
+    paintSong();
 }
 
 function setDrawOffset(path, offset) {
@@ -1681,11 +1685,25 @@ function initScrollDraw() {
     }
 
     alignScrollDraw();
-    ScrollTrigger.addEventListener("refreshInit", alignScrollDraw);
+    ScrollTrigger.addEventListener("refreshInit", () => {
+        scrollDrawMeasuring = true;
+        scrollDrawHold = 0;
+        alignScrollDraw();
+    });
+    const repaintScrollDraw = () => {
+        scrollDrawMeasuring = false;
+        const draw = ScrollTrigger.getAll().find(trigger => trigger.trigger === scrollDrawSvg && trigger.vars.end === "bottom 30%");
+        if (draw) paintDraw(draw.progress);
+        updateRecordHold();
+        alignScrollDraw();
+        paintScrollConnector();
+        paintScrollExit();
+    };
+    ScrollTrigger.addEventListener("refresh", repaintScrollDraw);
 
-    if (section05Scroll) {
+    if (storiesScroll) {
         ScrollTrigger.create({
-            trigger: section05Scroll,
+            trigger: storiesScroll,
             start: "top top",
             endTrigger: ".scroll-draw",
             end: "bottom top",
@@ -1731,4 +1749,144 @@ function initScrollDraw() {
     }
 }
 
+const songScroll = document.querySelector(".song-scroll");
+const songStage = document.querySelector(".song-stage");
+const songIntro = document.querySelector(".song-intro");
+const songPlayer = document.querySelector(".song-player");
+const songVinyl = document.querySelector(".song-vinyl");
+const songVinylLabel = document.querySelector(".song-vinyl-label");
+const songSleeve = document.querySelector(".song-sleeve");
+const songSleeveName = document.querySelector(".song-sleeve-copy b");
+const songSleeveCount = document.querySelector(".song-sleeve-copy span");
+const songTopics = document.querySelector(".song-topics");
+const songCatalog = [
+    { name: "세계 유명 동요", count: 131, image: "images/song-thumb1.png" },
+    { name: "율동 동요", count: 13, image: "images/song-thumb2.png" },
+    { name: "리틀팍스 동화 주제가", label: "리틀팍스<br>동화 주제가", count: 16, image: "images/song-thumb3.png" },
+    { name: "파닉스 송", count: 53, image: "images/song-thumb4.png" },
+    { name: "기초 학습", count: 37, image: "images/song-thumb5.png" },
+    { name: "사이트 워드 송", count: 20, image: "images/song-thumb6.png" },
+    { name: "생활 영어", count: 72, image: "images/song-thumb7.png" },
+    { name: "자장가", count: 16, image: "images/song-thumb8.png" },
+    { name: "크리스마스 & 핼러윈", label: "크리스마스<br>& 핼러윈", count: 34, image: "images/song-thumb9.png" }
+];
+let songIndex = 0;
+let songOut = false;
+let songTopicButtons = [];
+
+function songSlideX() {
+    return songVinyl ? songVinyl.offsetWidth * 0.72 : 0;
+}
+
+function showSong(index) {
+    const song = songCatalog[index];
+    if (!song) return;
+    songIndex = index;
+    if (songVinylLabel) songVinylLabel.src = song.image;
+    if (songSleeveName) songSleeveName.textContent = song.name;
+    if (songSleeveCount) songSleeveCount.textContent = `${song.count}곡`;
+    songTopicButtons.forEach((button, buttonIndex) => {
+        const active = buttonIndex === index;
+        button.classList.toggle("is-active", active);
+        button.setAttribute("aria-pressed", active ? "true" : "false");
+    });
+}
+
+function ejectSong() {
+    if (!songVinyl) return;
+    songOut = true;
+    songVinyl.classList.add("is-out");
+    gsap.to(songVinyl, { x: songSlideX(), duration: 0.85, ease: "power3.out", overwrite: "auto" });
+}
+
+function tuckSong() {
+    if (!songVinyl) return;
+    songOut = false;
+    songVinyl.classList.remove("is-out");
+    gsap.to(songVinyl, { x: 0, duration: 0.7, ease: "power3.inOut", overwrite: "auto" });
+}
+
+function chooseSong(index) {
+    const same = index === songIndex;
+    showSong(index);
+    if (same && songOut) tuckSong();
+    else if (songOut) gsap.fromTo(songVinyl, { x: songSlideX() * 0.82 }, { x: songSlideX(), duration: 0.45, ease: "power2.out", overwrite: "auto" });
+    else ejectSong();
+}
+
+function paintSong() {
+    if (!songScroll || !songIntro || !songPlayer || reduceMotion) return;
+    const open = scrollOpen ? scrollOpen.getBoundingClientRect() : null;
+    const openTop = open ? open.top + window.scrollY : 0;
+    const travel = scrollOpen ? Math.max(1, scrollOpen.offsetHeight - window.innerHeight) : 1;
+    const bloomT = open ? clamp((window.scrollY - openTop) / travel, 0, 1) : 0;
+    const stageTop = songScroll.getBoundingClientRect().top;
+    const dotScale = scrollDot ? Number(gsap.getProperty(scrollDot, "scale")) || 1 : 1;
+    const dotX = scrollDot ? Number(gsap.getProperty(scrollDot, "x")) : 0;
+    const dotY = scrollDot ? Number(gsap.getProperty(scrollDot, "y")) : 0;
+    const dotAtCenter = Math.abs(dotX - window.innerWidth / 2) < 4 && Math.abs(dotY - window.innerHeight / 2) < 4;
+    const covering = open && open.bottom > 0 && bloomT > 0 && dotAtCenter && Number(gsap.getProperty(scrollDot, "opacity")) > 0.5;
+    if (covering) {
+        if (songIntro.parentElement !== document.body) document.body.appendChild(songIntro);
+        songIntro.classList.add("is-cover");
+        gsap.set(songIntro, {
+            xPercent: -50,
+            yPercent: -50,
+            y: 0,
+            opacity: 1,
+            clipPath: `circle(${6 * dotScale}px at 50% 50%)`
+        });
+        gsap.set(songPlayer, { opacity: 0, y: 48, pointerEvents: "none" });
+        return;
+    }
+    if (songStage && songIntro.parentElement !== songStage) songStage.insertBefore(songIntro, songPlayer);
+    if (songIntro.classList.contains("is-cover")) {
+        songIntro.classList.remove("is-cover");
+        gsap.set(songIntro, { clearProps: "transform,clipPath" });
+    }
+    const range = Math.max(1, songScroll.offsetHeight - window.innerHeight);
+    const playerT = clamp(-stageTop / range, 0, 1);
+    const introT = clamp(1 - playerT / 0.5, 0, 1);
+    const showPlayer = clamp((playerT - 0.34) / 0.42, 0, 1);
+    gsap.set(songIntro, { opacity: introT, y: (1 - introT) * -40 });
+    gsap.set(songPlayer, {
+        opacity: showPlayer,
+        y: (1 - showPlayer) * 56,
+        pointerEvents: showPlayer > 0.85 ? "auto" : "none"
+    });
+}
+
+function initSong() {
+    if (!songTopics || !songVinyl) return;
+    songTopics.innerHTML = songCatalog.map((song, index) => `
+        <button type="button" class="song-topic${index ? "" : " is-active"}" aria-pressed="${index ? "false" : "true"}">
+            <img src="${song.image}" alt="">
+            <span>${song.label || song.name}</span>
+            <b>${song.count}곡</b>
+        </button>
+    `).join("");
+    songTopicButtons = [...songTopics.children];
+    songTopicButtons.forEach((button, index) => {
+        button.addEventListener("click", () => chooseSong(index));
+    });
+    if (songSleeve) {
+        songSleeve.addEventListener("click", () => {
+            if (songOut) tuckSong();
+            else ejectSong();
+        });
+    }
+    if (reduceMotion) return;
+    paintSong();
+    if (songScroll) {
+        ScrollTrigger.create({
+            trigger: ".scroll-open",
+            start: "top bottom",
+            endTrigger: ".song-scroll",
+            end: "bottom bottom",
+            onUpdate: paintSong
+        });
+    }
+}
+
+initSong();
 initScrollDraw();
