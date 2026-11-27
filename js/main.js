@@ -1752,6 +1752,8 @@ function initScrollDraw() {
 const songScroll = document.querySelector(".song-scroll");
 const songStage = document.querySelector(".song-stage");
 const songIntro = document.querySelector(".song-intro");
+const songIntroPin = document.querySelector(".song-intro-pin");
+const songIntroCopy = document.querySelector(".song-intro-copy");
 const songPlayer = document.querySelector(".song-player");
 const songVinyl = document.querySelector(".song-vinyl");
 const songVinylLabel = document.querySelector(".song-vinyl-label");
@@ -1759,21 +1761,58 @@ const songSleeve = document.querySelector(".song-sleeve");
 const songSleeveName = document.querySelector(".song-sleeve-copy b");
 const songSleeveCount = document.querySelector(".song-sleeve-copy span");
 const songTopics = document.querySelector(".song-topics");
+const songHint = document.querySelector(".song-hint");
+const songDefaultHint = songHint ? songHint.textContent : "";
+const songAudio = new Audio();
+songAudio.preload = "none";
 const songCatalog = [
-    { name: "세계 유명 동요", count: 131, image: "images/song-thumb1.png" },
-    { name: "율동 동요", count: 13, image: "images/song-thumb2.png" },
-    { name: "리틀팍스 동화 주제가", label: "리틀팍스<br>동화 주제가", count: 16, image: "images/song-thumb3.png" },
-    { name: "파닉스 송", count: 53, image: "images/song-thumb4.png" },
-    { name: "기초 학습", count: 37, image: "images/song-thumb5.png" },
-    { name: "사이트 워드 송", count: 20, image: "images/song-thumb6.png" },
-    { name: "생활 영어", count: 72, image: "images/song-thumb7.png" },
-    { name: "자장가", count: 16, image: "images/song-thumb8.png" },
-    { name: "크리스마스 & 핼러윈", label: "크리스마스<br>& 핼러윈", count: 34, image: "images/song-thumb9.png" }
+    { name: "세계 유명 동요", count: 131, image: "images/song-thumb1.png", audio: "mp3/music_cont01.mp3" },
+    { name: "율동 동요", count: 13, image: "images/song-thumb2.png", audio: "mp3/music_cont02.mp3" },
+    { name: "리틀팍스 동화 주제가", label: "리틀팍스<br>동화 주제가", count: 16, image: "images/song-thumb3.png", audio: "mp3/music_cont03.mp3" },
+    { name: "파닉스 송", count: 53, image: "images/song-thumb4.png", audio: "mp3/music_cont04.mp3" },
+    { name: "기초 학습", count: 37, image: "images/song-thumb5.png", audio: "mp3/music_cont05.mp3" },
+    { name: "사이트 워드 송", count: 20, image: "images/song-thumb6.png", audio: "mp3/music_cont06.mp3" },
+    { name: "생활 영어", count: 72, image: "images/song-thumb7.png", audio: "mp3/music_cont07.mp3" },
+    { name: "자장가", count: 16, image: "images/song-thumb8.png", audio: "mp3/music_cont08.mp3" },
+    { name: "크리스마스 & 핼러윈", label: "크리스마스<br>& 핼러윈", count: 34, image: "images/song-thumb9.png", audio: "mp3/music_cont09.mp3" }
 ];
 let songIndex = 0;
 let songOut = false;
 let songTopicButtons = [];
 let songIntroHold = null;
+let songPlayRequest = 0;
+
+function songAudioFailed() {
+    if (!songOut) return;
+    tuckSong();
+    if (songHint) songHint.textContent = "음악을 재생하지 못했어요. 주제를 다시 눌러주세요.";
+}
+
+function playSongAudio() {
+    const request = ++songPlayRequest;
+    const source = songCatalog[songIndex].audio;
+    if (songHint) songHint.textContent = songDefaultHint;
+    if (songAudio.getAttribute("src") !== source || songAudio.error) {
+        songAudio.pause();
+        songAudio.src = source;
+    }
+    songAudio.play().catch(error => {
+        // 이전 곡의 재생 요청이 취소된 경우 현재 곡은 계속 재생한다.
+        if (request !== songPlayRequest || error.name === "AbortError") return;
+        songAudioFailed();
+    });
+}
+
+songAudio.addEventListener("playing", () => {
+    if (songOut && songVinyl) songVinyl.classList.add("is-out");
+});
+["pause", "waiting"].forEach(event => {
+    songAudio.addEventListener(event, () => {
+        if (songVinyl) songVinyl.classList.remove("is-out");
+    });
+});
+songAudio.addEventListener("ended", tuckSong);
+songAudio.addEventListener("error", songAudioFailed);
 
 function songSlideX() {
     return songVinyl ? songVinyl.offsetWidth * 0.72 : 0;
@@ -1796,27 +1835,62 @@ function showSong(index) {
 function ejectSong() {
     if (!songVinyl) return;
     songOut = true;
-    songVinyl.classList.add("is-out");
     gsap.to(songVinyl, { x: songSlideX(), duration: 0.85, ease: "power3.out", overwrite: "auto" });
+    playSongAudio();
 }
 
 function tuckSong() {
     if (!songVinyl) return;
     songOut = false;
+    songPlayRequest++;
+    songAudio.pause();
     songVinyl.classList.remove("is-out");
     gsap.to(songVinyl, { x: 0, duration: 0.7, ease: "power3.inOut", overwrite: "auto" });
 }
 
 function chooseSong(index) {
+    if (!songCatalog[index]) return;
     const same = index === songIndex;
     showSong(index);
     if (same && songOut) tuckSong();
-    else if (songOut) gsap.fromTo(songVinyl, { x: songSlideX() * 0.82 }, { x: songSlideX(), duration: 0.45, ease: "power2.out", overwrite: "auto" });
+    else if (songOut) {
+        gsap.fromTo(songVinyl, { x: songSlideX() * 0.82 }, { x: songSlideX(), duration: 0.45, ease: "power2.out", overwrite: "auto" });
+        playSongAudio();
+    }
     else ejectSong();
+}
+
+function songIntroMaxScale() {
+    const small = Math.min(67, Math.max(window.innerWidth * 0.0315, window.innerWidth * 0.046));
+    const large = Math.min(190, Math.max(76, window.innerWidth * 0.1));
+    return large / Math.max(1, small);
+}
+
+function placeSongIntroScale() {
+    if (!songIntroCopy || !songIntro) return;
+    const open = scrollOpen ? scrollOpen.getBoundingClientRect() : null;
+    const openTop = open ? open.top + window.scrollY : 0;
+    const travel = scrollOpen ? Math.max(1, scrollOpen.offsetHeight - window.innerHeight) : 1;
+    const bloomT = open ? clamp((window.scrollY - openTop) / travel, 0, 1) : 1;
+    const shrinkStart = 0.46;
+    let t = clamp((bloomT - shrinkStart) / (1 - shrinkStart), 0, 1);
+    if (!open || open.bottom <= 0) t = 1;
+    const eased = t * t * (3 - 2 * t);
+    let scale = lerp(songIntroMaxScale(), 1, eased);
+    const heading = songIntroCopy.querySelector("h2");
+    if (heading) {
+        const fit = (window.innerWidth * 0.92) / Math.max(1, heading.scrollWidth);
+        scale = Math.max(1, Math.min(scale, fit));
+    }
+    gsap.set(songIntroCopy, {
+        scale,
+        transformOrigin: "50% 50%"
+    });
 }
 
 function paintSong() {
     if (!songScroll || !songIntro || !songPlayer || reduceMotion) return;
+    placeSongIntroScale();
     const open = scrollOpen ? scrollOpen.getBoundingClientRect() : null;
     const openTop = open ? open.top + window.scrollY : 0;
     const travel = scrollOpen ? Math.max(1, scrollOpen.offsetHeight - window.innerHeight) : 1;
@@ -1827,12 +1901,12 @@ function paintSong() {
     const dotAtCenter = Math.abs(dotX - window.innerWidth / 2) < 4 && Math.abs(dotY - window.innerHeight / 2) < 4;
     const covering = open && open.bottom > 0 && bloomT > 0 && dotAtCenter && Number(gsap.getProperty(scrollDot, "opacity")) > 0.5;
     if (covering) {
-        if (!songIntroHold && songStage) {
+        if (!songIntroHold && songIntroPin) {
             songIntroHold = document.createElement("div");
             songIntroHold.className = "song-intro-hold";
             songIntroHold.setAttribute("aria-hidden", "true");
             songIntroHold.style.height = `${songIntro.getBoundingClientRect().height}px`;
-            songStage.insertBefore(songIntroHold, songIntro);
+            songIntroPin.insertBefore(songIntroHold, songIntro);
         }
         if (songIntro.parentElement !== document.body) document.body.appendChild(songIntro);
         songIntro.classList.add("is-cover");
@@ -1845,12 +1919,12 @@ function paintSong() {
         });
         return;
     }
-    if (songStage && songIntroHold) {
-        songStage.insertBefore(songIntro, songIntroHold);
+    if (songIntroPin && songIntroHold) {
+        songIntroPin.insertBefore(songIntro, songIntroHold);
         songIntroHold.remove();
         songIntroHold = null;
-    } else if (songStage && songIntro.parentElement !== songStage) {
-        songStage.insertBefore(songIntro, songPlayer);
+    } else if (songIntroPin && songIntro.parentElement !== songIntroPin) {
+        songIntroPin.appendChild(songIntro);
     }
     if (scrollDot && open && open.bottom <= 0) hideScrollExit();
     if (songIntro.classList.contains("is-cover")) {
@@ -1864,7 +1938,7 @@ function initSong() {
     songTopics.innerHTML = songCatalog.map((song, index) => `
         <button type="button" class="song-topic${index ? "" : " is-active"}" aria-pressed="${index ? "false" : "true"}">
             <img src="${song.image}" alt="">
-            <span>${song.label || song.name}</span>
+            <span>${song.name}</span>
             <b>${song.count}곡</b>
         </button>
     `).join("");
@@ -1891,5 +1965,70 @@ function initSong() {
     }
 }
 
+function initSongMix() {
+    const mix = document.querySelector(".song-mix");
+    const panel = document.querySelector(".song-mix-panel");
+    const inner = document.querySelector(".song-mix-inner");
+    const head = document.querySelector(".song-mix-head");
+    const title = document.querySelector(".song-mix-head h3");
+    const rest = [".song-mix-date", ".song-mix-card", ".song-mix-note"].map(selector => document.querySelector(selector));
+    if (!mix || !panel || !inner || !head || !title || rest.some(item => !item) || reduceMotion) return;
+
+    gsap.set(inner, { xPercent: -50, yPercent: -50 });
+    const timeline = gsap.timeline({
+        defaults: { ease: "none" },
+        scrollTrigger: {
+            trigger: mix,
+            start: "top top",
+            end: "bottom bottom",
+            scrub: 0.6,
+            invalidateOnRefresh: true
+        }
+    });
+    const barWidth = () => Math.min(880, window.innerWidth * 0.74);
+    const barHeight = () => Math.min(110, Math.max(64, window.innerHeight * 0.1));
+    timeline.fromTo(panel, { opacity: 0, scale: 0.92 }, { opacity: 1, scale: 1, ease: "power2.out", duration: 0.04 }, 0);
+    timeline.fromTo(panel, {
+        width: barWidth,
+        height: barHeight,
+        borderRadius: 10
+    }, {
+        width: () => window.innerWidth,
+        height: () => window.innerHeight,
+        borderRadius: 0,
+        ease: "power2.inOut",
+        duration: 0.4,
+        immediateRender: false
+    }, 0.14);
+    timeline.fromTo(head, {
+        y: () => inner.offsetHeight / 2 - (head.offsetTop + title.offsetHeight / 2)
+    }, {
+        y: 0,
+        ease: "power2.inOut",
+        duration: 0.26
+    }, 0.4);
+    timeline.fromTo(rest, { opacity: 0, y: 36 }, { opacity: 1, y: 0, ease: "power2.out", duration: 0.2, stagger: 0.05, immediateRender: false }, 0.52);
+    timeline.set({}, {}, 1);
+}
+
+function initSongIntroFold() {
+    const mix = document.querySelector(".song-mix");
+    const fold = document.querySelector(".song-intro-fold");
+    if (!mix || !fold || reduceMotion) return;
+
+    gsap.timeline({
+        defaults: { ease: "power2.out" },
+        scrollTrigger: {
+            trigger: mix,
+            start: "top top",
+            end: () => `+=${window.innerHeight * 0.1}`,
+            scrub: 0.5,
+            invalidateOnRefresh: true
+        }
+    }).to(fold, { opacity: 0, y: -28, duration: 1 });
+}
+
 initSong();
+initSongIntroFold();
+initSongMix();
 initScrollDraw();
